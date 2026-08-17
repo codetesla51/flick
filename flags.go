@@ -3,6 +3,7 @@ package flick
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -104,19 +105,31 @@ func BuildSnapshot(rows []flagEvent) (string, error) {
 	return string(b), nil
 }
 
-func ApplyDelta(current map[string]flagdFlag, payload map[string]any) map[string]flagdFlag {
-	key := payload["key"].(string)
+func ApplyDelta(current map[string]flagdFlag, payload map[string]any) (map[string]flagdFlag, error) {
+
+	key, ok := payload["key"].(string)
+	if !ok {
+		return current, fmt.Errorf("payload missing or invalid 'key'")
+	}
 
 	if deleted, ok := payload["deleted"].(bool); ok && deleted {
 		delete(current, key)
-		return current
+		return current, nil
+	}
+
+	state, stateOK := payload["state"].(string)
+	defaultVariant, variantOK := payload["defaultVariant"].(string)
+	variants, variantsOK := payload["variants"].(map[string]any)
+	targeting, targetingOK := payload["targeting"].(map[string]any)
+	if !stateOK || !variantOK || !variantsOK || !targetingOK {
+		return current, fmt.Errorf("payload for key %q missing or invalid fields: %v", key, payload)
 	}
 
 	current[key] = flagdFlag{
-		State:          payload["state"].(string),
-		DefaultVariant: payload["defaultVariant"].(string),
-		Variants:       payload["variants"].(map[string]any),
-		Targeting:      payload["targeting"].(map[string]any),
+		State:          state,
+		DefaultVariant: defaultVariant,
+		Variants:       variants,
+		Targeting:      targeting,
 	}
-	return current
+	return current, nil
 }

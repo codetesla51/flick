@@ -222,7 +222,10 @@ func TestApplyDelta(t *testing.T) {
 	}
 
 	t.Run("add new flag", func(t *testing.T) {
-		got := ApplyDelta(current, outboxPayload(t, `{"key":"banner","state":"ENABLED","defaultVariant":"on","variants":{"on":true,"off":false},"targeting":{}}`))
+		got, err := ApplyDelta(current, outboxPayload(t, `{"key":"banner","state":"ENABLED","defaultVariant":"on","variants":{"on":true,"off":false},"targeting":{}}`))
+		if err != nil {
+			t.Fatalf("ApplyDelta add: %v", err)
+		}
 		banner, ok := got["banner"]
 		if !ok {
 			t.Fatalf("banner not added: %v", got)
@@ -239,7 +242,10 @@ func TestApplyDelta(t *testing.T) {
 	})
 
 	t.Run("update existing flag", func(t *testing.T) {
-		got := ApplyDelta(current, outboxPayload(t, `{"key":"existing","state":"DISABLED","defaultVariant":"b","variants":{"a":1,"b":2},"targeting":{}}`))
+		got, err := ApplyDelta(current, outboxPayload(t, `{"key":"existing","state":"DISABLED","defaultVariant":"b","variants":{"a":1,"b":2},"targeting":{}}`))
+		if err != nil {
+			t.Fatalf("ApplyDelta update: %v", err)
+		}
 		if got["existing"].State != "DISABLED" || got["existing"].DefaultVariant != "b" {
 			t.Errorf("existing = %+v, want DISABLED/b", got["existing"])
 		}
@@ -249,12 +255,29 @@ func TestApplyDelta(t *testing.T) {
 	})
 
 	t.Run("delete flag", func(t *testing.T) {
-		got := ApplyDelta(current, map[string]any{"key": "existing", "deleted": true})
+		got, err := ApplyDelta(current, map[string]any{"key": "existing", "deleted": true})
+		if err != nil {
+			t.Fatalf("ApplyDelta delete: %v", err)
+		}
 		if _, ok := got["existing"]; ok {
 			t.Errorf("existing still present after delete: %v", got)
 		}
 		if len(got) != 1 {
 			t.Errorf("len = %d, want 1 (only banner left)", len(got))
+		}
+	})
+
+	t.Run("malformed payload returns error instead of panicking", func(t *testing.T) {
+		bad := []map[string]any{
+			{"key": 123}, // key not a string
+			{"key": "x"}, // missing state/defaultVariant/variants/targeting
+			{"key": "x", "state": "ENABLED", "defaultVariant": "a", "variants": nil, "targeting": map[string]any{}},
+			{"key": "x", "state": 5, "defaultVariant": "a", "variants": map[string]any{}, "targeting": map[string]any{}},
+		}
+		for _, p := range bad {
+			if _, err := ApplyDelta(current, p); err == nil {
+				t.Errorf("ApplyDelta(%v) = nil error, want error", p)
+			}
 		}
 	})
 }
