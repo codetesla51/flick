@@ -1,93 +1,64 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
-	"log"
-	"net"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/codetesla51/flick"
-	syncv1 "github.com/codetesla51/flick/gen/flagd/sync/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"github.com/spf13/cobra"
 )
 
+// version is baked in at build time via
+//
+//	go build -ldflags "-X main.version=v0.1.0" ./cmd/flick
+var version = "dev (HEAD)"
+
+var rootCmd = &cobra.Command{
+	Use:   "flick",
+	Short: "Postgres-native feature flags, synced to flagd",
+	Long: `flick is a feature-flag service backed by Postgres.
+
+Flags live in the flags table; every change (create, update, delete) is
+written to the outbox table in the same transaction. A logical replication
+consumer (phylax) streams those events to connected flagd instances over
+gRPC (flagd.sync.v1.FlagSyncService) — push, no polling.
+
+Commands:
+  flick init     set up the database (migrations + replication check)
+  flick serve    run the flagd sync gRPC server
+  flick set      create or update a flag
+  flick list     list all flags
+  flick delete   delete a flag
+  flick version  print the version
+
+Every database command accepts --dsn, falling back to the FLICK_DSN
+environment variable.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
+}
+
+var dsn string
+
+func init() {
+	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "",
+		"Postgres DSN (default: FLICK_DSN env, then postgres://us:2@localhost:5432/flick?sslmode=disable)")
+	rootCmd.AddCommand(serveCmd, setCmd, listCmd, deleteCmd, initCmd, versionCmd)
+}
+
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
+// resolveDSN picks the DSN from --dsn, FLICK_DSN, or the local default.
+func resolveDSN() string {
+	if dsn != "" {
+		return dsn
 	}
-
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+	if v := os.Getenv("FLICK_DSN"); v != "" {
+		return v
 	}
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("ping db: %w", err)
-	}
-
-	if err := flick.Migrate(db); err != nil {
-		return fmt.Errorf("migrate: %w", err)
-	}
-
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		return fmt.Errorf("open pool: %w", err)
-	}
-	defer pool.Close()
-	if err := pool.Ping(ctx); err != nil {
-		return fmt.Errorf("ping pool: %w", err)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	errCh := make(chan error, 1)
-	hub := flick.NewHub()
-	go func() {
-		errCh <- flick.RunOutbox(ctx, dsn, hub)
-	}()
-
-	syncAddr := os.Getenv("FLICK_SYNC_ADDR")
-	if syncAddr == "" {
-		syncAddr = ":8015"
-	}
-	lis, err := net.Listen("tcp", syncAddr)
-	if err != nil {
-		return fmt.Errorf("sync listen: %w", err)
-	}
-	grpcServer := grpc.NewServer()
-	reflection.Register(grpcServer)
-	syncv1.RegisterFlagSyncServiceServer(grpcServer, flick.NewSyncService(pool, hub))
-	go func() {
-		log.Printf("sync gRPC server listening on %s", syncAddr)
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Printf("sync server: %v", err)
-		}
-	}()
-	defer grpcServer.GracefulStop()
-
-	log.Println("migrations applied; app db pool ready; outbox consumer started")
-	select {
-	case err := <-errCh:
-		return fmt.Errorf("outbox consumer: %w", err)
-	case <-ctx.Done():
-		log.Println("shutting down")
-		return nil
-	}
+	return "postgres://us:2@localhost:5432/flick?sslmode=disable"
 }
