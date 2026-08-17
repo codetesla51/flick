@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -57,6 +59,20 @@ func run() error {
 		return fmt.Errorf("ping pool: %w", err)
 	}
 
-	log.Println("migrations applied; app db pool ready")
-	return nil
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- runOutbox(ctx, dsn)
+	}()
+
+	log.Println("migrations applied; app db pool ready; outbox consumer started")
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("outbox consumer: %w", err)
+	case <-ctx.Done():
+		log.Println("shutting down")
+		return nil
+	}
 }
