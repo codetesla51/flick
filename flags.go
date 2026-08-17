@@ -91,11 +91,21 @@ func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant
 
 // BuildSnapshot builds a snapshot of all flags in the format expected by flagd.
 func BuildSnapshot(rows []flagEvent) (string, error) {
-	flags := make(map[string]flagdFlag)
+	return marshalFlags(flagEventsToState(rows))
+}
+
+// flagEventsToState translates flag rows into the in-memory state used by
+// both FetchAllFlags and the SyncFlags streaming loop.
+func flagEventsToState(rows []flagEvent) map[string]flagdFlag {
+	flags := make(map[string]flagdFlag, len(rows))
 	for _, row := range rows {
 		flags[row.Key] = TranslateFlag(row)
 	}
+	return flags
+}
 
+// marshalFlags renders the flag state as a flagd-compatible {"flags": ...} doc.
+func marshalFlags(flags map[string]flagdFlag) (string, error) {
 	doc := make(map[string]any)
 	doc["flags"] = flags
 	b, err := json.Marshal(doc)

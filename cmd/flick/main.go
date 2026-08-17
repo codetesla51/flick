@@ -58,8 +58,9 @@ func run() error {
 	defer stop()
 
 	errCh := make(chan error, 1)
+	hub := flick.NewHub()
 	go func() {
-		errCh <- flick.RunOutbox(ctx, dsn)
+		errCh <- flick.RunOutbox(ctx, dsn, hub)
 	}()
 
 	syncAddr := os.Getenv("FLICK_SYNC_ADDR")
@@ -72,7 +73,7 @@ func run() error {
 	}
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
-	syncv1.RegisterFlagSyncServiceServer(grpcServer, flick.NewSyncService(pool))
+	syncv1.RegisterFlagSyncServiceServer(grpcServer, flick.NewSyncService(pool, hub))
 	go func() {
 		log.Printf("sync gRPC server listening on %s", syncAddr)
 		if err := grpcServer.Serve(lis); err != nil {
