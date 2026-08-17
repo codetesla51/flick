@@ -17,6 +17,32 @@ type flagEvent struct {
 	Metadata       json.RawMessage `json:"metadata"`
 }
 
+type flagdFlag struct {
+	State          string         `json:"state"`
+	DefaultVariant string         `json:"defaultVariant"`
+	Variants       map[string]any `json:"variants"`
+	Targeting      map[string]any `json:"targeting,omitempty"`
+}
+
+func TranslateFlag(row flagEvent) flagdFlag {
+	var variants map[string]any
+	if err := json.Unmarshal(row.Variants, &variants); err != nil {
+		variants = map[string]any{}
+	}
+
+	var targeting map[string]any
+	if err := json.Unmarshal(row.Targeting, &targeting); err != nil {
+		targeting = map[string]any{}
+	}
+
+	return flagdFlag{
+		State:          row.State,
+		DefaultVariant: row.DefaultVariant,
+		Variants:       variants,
+		Targeting:      targeting,
+	}
+}
+
 // SetFlag upserts a feature flag and enqueues a 'flags' outbox event,
 // both atomically in a single transaction.
 func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant string, variants, targeting, metadata json.RawMessage) error {
@@ -60,4 +86,37 @@ func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant
 	}
 
 	return tx.Commit(ctx)
+}
+
+// BuildSnapshot builds a snapshot of all flags in the format expected by flagd.
+func BuildSnapshot(rows []flagEvent) (string, error) {
+	flags := make(map[string]flagdFlag)
+	for _, row := range rows {
+		flags[row.Key] = TranslateFlag(row)
+	}
+
+	doc := make(map[string]any)
+	doc["flags"] = flags
+	b, err := json.Marshal(doc)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func ApplyDelta(current map[string]flagdFlag, payload map[string]any) map[string]flagdFlag {
+	key := payload["key"].(string)
+
+	if deleted, ok := payload["deleted"].(bool); ok && deleted {
+		delete(current, key)
+		return current
+	}
+
+	current[key] = flagdFlag{
+		State:          payload["state"].(string),
+		DefaultVariant: payload["defaultVariant"].(string),
+		Variants:       payload["variants"].(map[string]any),
+		Targeting:      payload["targeting"].(map[string]any),
+	}
+	return current
 }
