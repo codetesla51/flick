@@ -42,7 +42,7 @@ slot and publication are created automatically by flick serve on first run.`,
 		if walLevel != "logical" {
 			return fmt.Errorf("wal_level = %q, but logical replication streaming requires 'logical'\n  fix: run ALTER SYSTEM SET wal_level = 'logical' (as superuser), then restart Postgres", walLevel)
 		}
-		fmt.Println("wal_level: logical ✓")
+		fmt.Println("wal_level: logical")
 
 		fmt.Println("ready: run `flick serve` to start the sync server")
 		return nil
