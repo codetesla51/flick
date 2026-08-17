@@ -3,20 +3,16 @@ package main
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/codetesla51/flick"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 )
-
-//go:embed db/goose_migrations/*.sql
-var embedMigrations embed.FS
 
 func main() {
 	if err := run(); err != nil {
@@ -40,13 +36,8 @@ func run() error {
 		return fmt.Errorf("ping db: %w", err)
 	}
 
-	goose.SetBaseFS(embedMigrations)
-	if err := goose.SetDialect("postgres"); err != nil {
-		return fmt.Errorf("goose dialect: %w", err)
-	}
-
-	if err := goose.Up(db, "db/goose_migrations"); err != nil {
-		return fmt.Errorf("goose up: %w", err)
+	if err := flick.Migrate(db); err != nil {
+		return fmt.Errorf("migrate: %w", err)
 	}
 
 	ctx := context.Background()
@@ -64,7 +55,7 @@ func run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- runOutbox(ctx, dsn)
+		errCh <- flick.RunOutbox(ctx, dsn)
 	}()
 
 	log.Println("migrations applied; app db pool ready; outbox consumer started")
