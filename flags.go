@@ -16,6 +16,7 @@ type flagEvent struct {
 	Variants       json.RawMessage `json:"variants"`
 	Targeting      json.RawMessage `json:"targeting"`
 	Metadata       json.RawMessage `json:"metadata"`
+	Deleted        bool            `json:"deleted,omitempty"`
 }
 
 type flagdFlag struct {
@@ -75,6 +76,39 @@ func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant
 		Targeting:      targeting,
 		Metadata:       metadata,
 	})
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO outbox (topic, payload)
+		VALUES ('flags', $1)
+	`, json.RawMessage(payload)); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+// DeleteFlag removes a feature flag and enqueues a 'flags' outbox delete
+// event, both atomically in a single transaction. Deleting an absent key is
+// a no-op: nothing is deleted and no event is emitted.
+func DeleteFlag(ctx context.Context, pool *pgxpool.Pool, key string) error {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `DELETE FROM flags WHERE key = $1`, key)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return tx.Commit(ctx)
+	}
+
+	payload, err := json.Marshal(flagEvent{Key: key, Deleted: true})
 	if err != nil {
 		return err
 	}
