@@ -26,6 +26,7 @@ Commands:
   flick init     set up the database (migrations + replication check)
   flick serve    run the flagd sync gRPC server
   flick set      create or update a flag
+  flick get      show a single flag
   flick list     list all flags
   flick delete   delete a flag
   flick version  print the version
@@ -35,6 +36,8 @@ environment variable.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	},
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 var dsn string
@@ -42,7 +45,7 @@ var dsn string
 func init() {
 	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "",
 		"Postgres DSN (default: FLICK_DSN env, then postgres://us:2@localhost:5432/flick?sslmode=disable)")
-	rootCmd.AddCommand(serveCmd, setCmd, listCmd, deleteCmd, initCmd, versionCmd)
+	rootCmd.AddCommand(serveCmd, setCmd, getCmd, listCmd, deleteCmd, initCmd, versionCmd)
 }
 
 func main() {

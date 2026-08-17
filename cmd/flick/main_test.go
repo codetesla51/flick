@@ -25,7 +25,7 @@ func TestCLIHelpShowsAllCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("--help: %v", err)
 	}
-	for _, c := range []string{"init", "serve", "set", "list", "delete", "version"} {
+	for _, c := range []string{"init", "serve", "set", "get", "list", "delete", "version"} {
 		if !strings.Contains(out, c) {
 			t.Errorf("help output missing %q:\n%s", c, out)
 		}
@@ -87,6 +87,20 @@ func TestCLISetListDeleteE2E(t *testing.T) {
 	}
 	if !strings.Contains(out, key) {
 		t.Errorf("list output missing %q:\n%s", key, out)
+	}
+
+	// get shows it with details
+	out, err = runCLI("get", key)
+	if err != nil {
+		t.Fatalf("get: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, key) || !strings.Contains(out, "variants:") {
+		t.Errorf("get output missing details for %q:\n%s", key, out)
+	}
+
+	// get on unknown key is an error
+	if _, err := runCLI("get", "no-such-flag"); err == nil {
+		t.Errorf("get unknown key: want error, got nil")
 	}
 
 	// delete

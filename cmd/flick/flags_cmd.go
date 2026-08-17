@@ -79,6 +79,44 @@ clients see the change within milliseconds.
 	},
 }
 
+var getCmd = &cobra.Command{
+	Use:   "get <key>",
+	Short: "Show a single flag",
+	Long:  `Show all fields of one flag: state, default variant, variants, targeting, metadata, last update.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+		pool, err := pgxpool.New(cmd.Context(), resolveDSN())
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+
+		var state, def string
+		var variants, targeting, metadata []byte
+		var updated time.Time
+		err = pool.QueryRow(cmd.Context(), `
+			SELECT state, default_variant, variants, targeting, metadata, updated_at
+			FROM flags WHERE key=$1`, key).Scan(&state, &def, &variants, &targeting, &metadata, &updated)
+		if err != nil {
+			if err.Error() == "no rows in result set" {
+				return fmt.Errorf("no flag named %q", key)
+			}
+			return err
+		}
+
+		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "key:\t%s\n", key)
+		fmt.Fprintf(w, "state:\t%s\n", state)
+		fmt.Fprintf(w, "default:\t%s\n", def)
+		fmt.Fprintf(w, "variants:\t%s\n", variants)
+		fmt.Fprintf(w, "targeting:\t%s\n", targeting)
+		fmt.Fprintf(w, "metadata:\t%s\n", metadata)
+		fmt.Fprintf(w, "updated:\t%s\n", updated.Format("2006-01-02 15:04:05"))
+		return w.Flush()
+	},
+}
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all flags",
