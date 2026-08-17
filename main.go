@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
@@ -45,6 +47,16 @@ func run() error {
 		return fmt.Errorf("goose up: %w", err)
 	}
 
-	log.Println("migrations applied")
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return fmt.Errorf("open pool: %w", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		return fmt.Errorf("ping pool: %w", err)
+	}
+
+	log.Println("migrations applied; app db pool ready")
 	return nil
 }
