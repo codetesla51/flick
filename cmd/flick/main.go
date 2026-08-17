@@ -5,13 +5,17 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/codetesla51/flick"
+	syncv1 "github.com/codetesla51/flick/gen/flagd/sync/v1"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -57,6 +61,25 @@ func run() error {
 	go func() {
 		errCh <- flick.RunOutbox(ctx, dsn)
 	}()
+
+	syncAddr := os.Getenv("FLICK_SYNC_ADDR")
+	if syncAddr == "" {
+		syncAddr = ":8015"
+	}
+	lis, err := net.Listen("tcp", syncAddr)
+	if err != nil {
+		return fmt.Errorf("sync listen: %w", err)
+	}
+	grpcServer := grpc.NewServer()
+	reflection.Register(grpcServer)
+	syncv1.RegisterFlagSyncServiceServer(grpcServer, flick.NewSyncService(pool))
+	go func() {
+		log.Printf("sync gRPC server listening on %s", syncAddr)
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Printf("sync server: %v", err)
+		}
+	}()
+	defer grpcServer.GracefulStop()
 
 	log.Println("migrations applied; app db pool ready; outbox consumer started")
 	select {
