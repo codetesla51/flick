@@ -560,7 +560,7 @@ function variantRow(name, value) {
   div.innerHTML = `
     <input data-v name spellcheck="false" value="${esc(name)}" placeholder="variant"
       class="flex-1 h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
-    <input data-v val spellcheck="false" value="${esc(v)}" placeholder="value (JSON)"
+    <input data-val val spellcheck="false" value="${esc(v)}" placeholder="value (JSON)"
       class="flex-[1.4] h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
     <button type="button" data-rm class="h-9 w-9 shrink-0 grid place-items-center rounded-lg text-faint hover:bg-bad/10 hover:text-bad transition-colors focus-ring" aria-label="Remove variant"><i class="ph ph-minus text-base"></i></button>`;
   div.querySelector("[data-rm]").addEventListener("click", () => {
