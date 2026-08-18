@@ -156,6 +156,7 @@ tailwind.config = {
     /* touch targets: 44px minimum on touch devices */
     .btn-ghost, .btn-primary, button[data-act], button[data-pg], .stateSeg { min-height: 44px; min-width: 44px; }
     .input, .input-sm, .ta { min-height: 44px; }
+    .header { padding: 0 1rem; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -184,9 +185,6 @@ tailwind.config = {
       </button>
     </div>
   </div>
-
-  @media (pointer: coarse) {
-    .header { padding: 0 1rem; } }
 
 <main class="mx-auto max-w-[1200px] px-6 pb-24 pt-8">
 
@@ -377,6 +375,7 @@ const refreshFlags = async () => {
     const data = await api("/api/flags");
     flags = data.flags || [];
     $("mFlags").textContent = flags.length;
+    $("mFlagsLg").textContent = flags.length;
     render();
   } catch (err) { toast("Failed to load flags: " + err.message, "bad"); }
 };
