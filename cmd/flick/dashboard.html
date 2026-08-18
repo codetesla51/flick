@@ -139,8 +139,6 @@ tailwind.config = {
   .dark .header { box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.1); }
 
   /* ---- motion: swift easing, restrained ---- */
-  .live-dot { animation: pulse-live 2.4s ease-in-out infinite; }
-  @keyframes pulse-live { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
   @keyframes modal-in { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: scale(1) } }
   .modal-in { animation: modal-in .3s var(--ease); }
   @keyframes toast-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
@@ -163,8 +161,7 @@ tailwind.config = {
     </a>
 
     <div class="ml-auto flex items-center gap-1">
-      <span class="hidden sm:flex items-center gap-2 px-3 h-8 text-[13px] text-secondary" title="Live sync status">
-        <span id="liveDot" class="size-2.5 rounded-full bg-muted live-dot"></span>
+      <span class="hidden sm:flex items-center px-3 h-8 text-[13px] text-secondary" title="Live sync status">
         <span id="liveText">connecting…</span>
       </span>
       <button id="themeBtn" class="btn-ghost h-8 w-8 focus-ring" aria-label="Toggle theme">
@@ -730,11 +727,9 @@ const scheduleRefresh = () => {
 
 const evt = new EventSource("/events");
 evt.onopen = () => {
-  $("liveDot").className = "size-2.5 rounded-full bg-green live-dot";
-  $("liveText").textContent = "live";
+  $("liveText").textContent = "streaming";
 };
 evt.onerror = () => {
-  $("liveDot").className = "size-2.5 rounded-full bg-amber";
   $("liveText").textContent = "reconnecting";
 };
 evt.onmessage = (msg) => {
