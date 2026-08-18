@@ -44,7 +44,7 @@ var dsn string
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "",
-		"Postgres DSN (default: FLICK_DSN env, then postgres://us:2@localhost:5432/flick?sslmode=disable)")
+		"Postgres DSN (default: FLICK_DSN env, then postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable)")
 	rootCmd.AddCommand(serveCmd, setCmd, getCmd, listCmd, deleteCmd, initCmd, versionCmd)
 }
 
@@ -63,5 +63,5 @@ func resolveDSN() string {
 	if v := os.Getenv("FLICK_DSN"); v != "" {
 		return v
 	}
-	return "postgres://us:2@localhost:5432/flick?sslmode=disable"
+	return "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
 }
