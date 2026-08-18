@@ -350,6 +350,7 @@ const refreshFlags = async () => {
   try {
     const data = await api("/api/flags");
     flags = data.flags || [];
+    $("mFlags").textContent = flags.length;
     render();
   } catch (err) { toast("Failed to load flags: " + err.message, "bad"); }
 };
@@ -761,7 +762,6 @@ $("newBtn").addEventListener("click", () => openModal(null));
 $("emptyNew").addEventListener("click", () => openModal(null));
 
 refreshFlags();
-fetch("/api/flags").then((r) => r.json()).then((d) => { $("mFlags").textContent = (d.flags || []).length; }).catch(() => {});
 </script>
 </body>
 </html>
