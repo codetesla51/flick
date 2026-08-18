@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call: # reusable from release.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: us
+          POSTGRES_PASSWORD: "2"
+          POSTGRES_DB: flick
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U us -d flick"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Matches the service container above; the E2E + dashboard tests hit
+      # this DSN directly.
+      FLICK_DSN: postgres://us:2@localhost:5432/flick?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Format
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Test (race)
+        run: go test -race -count=1 ./...
