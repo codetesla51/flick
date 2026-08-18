@@ -1,3 +1,5 @@
+//go:build e2e
+
 package main
 
 import (
@@ -8,20 +10,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// testDSN returns the DSN for integration tests.
-func testDSN() string {
-	if dsn := os.Getenv("FLICK_DSN"); dsn != "" {
-		return dsn
+// testDSN returns the DSN from the FLICK_DSN env var (empty when unset).
+func testDSN() string { return os.Getenv("FLICK_DSN") }
+
+// requireDB returns the FLICK_DSN env var, skipping the test when unset so
+// e2e runs degrade gracefully on machines without a database.
+func requireDB(t *testing.T) string {
+	t.Helper()
+	dsn := testDSN()
+	if dsn == "" {
+		t.Skip("FLICK_DSN not set; skipping e2e test")
 	}
-	return "postgres://us:2@localhost:5432/flick?sslmode=disable"
+	return dsn
 }
 
 // setupTestDB creates a pool and registers cleanup to remove the given key
 // from both outbox and flags tables.
 func setupTestDB(t *testing.T, key string) *pgxpool.Pool {
 	t.Helper()
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN())
+	pool, err := pgxpool.New(context.Background(), requireDB(t))
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}

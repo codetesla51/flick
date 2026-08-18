@@ -338,7 +338,7 @@ flick
 │   ├── serve.go              sync gRPC server + console + outbox consumer
 │   ├── flags_cmd.go          set / get / list / delete
 │   ├── dashboard.go          console: embedded HTML+CSS+JS, /api/flags, /events, /metrics/stream
-│   └── *_test.go             e2e tests (self-migrating via TestMain)
+│   └── *_test.go             unit tests; *_e2e_test.go behind `-tags e2e`
 ├── flags.go                  SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders
 ├── outbox.go                 phylax wiring; delivery handler → Hub
 ├── hub.go                    pub/sub: Subscribe / Unsubscribe / Publish (drop-on-full)
@@ -351,8 +351,13 @@ flick
 ## Development
 
 ```sh
-go test -race ./...     # unit + e2e — self-migrates, needs any reachable Postgres
-go vet ./...
+go test ./...                # unit tests — no database required
+FLICK_DSN=<postgres-dsn> go test -tags e2e ./...   # e2e — needs Postgres
 ```
 
-Tests self-apply the embedded migrations in `TestMain`, so they work against any Postgres (set `FLICK_DSN` if yours isn't the default).
+Tests are split into two buckets:
+
+- **Unit** (`go test ./...`) — hub, translation, snapshot, delta, and CLI-wiring tests. Pure in-memory; runs anywhere with no database.
+- **E2E** (`go test -tags e2e ./...`) — real Postgres round-trips: `SetFlag`/`DeleteFlag` transactions, the CLI (set/get/list/delete), and the console HTTP API. The e2e build tag activates a `TestMain` that self-applies the embedded migrations against the database from `FLICK_DSN`.
+
+E2E tests take their database entirely from the `FLICK_DSN` env var — there is no hardcoded fallback. If `FLICK_DSN` is unset (or the database is unreachable), e2e tests skip cleanly instead of failing, so `-tags e2e` is safe to run anywhere.

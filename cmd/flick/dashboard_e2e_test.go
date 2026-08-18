@@ -1,3 +1,5 @@
+//go:build e2e
+
 package main
 
 import (
@@ -17,7 +19,7 @@ const apiKey = "dashboard_api_test"
 
 func newTestMux(t *testing.T) http.Handler {
 	t.Helper()
-	pool, err := pgxpool.New(context.Background(), testDSN())
+	pool, err := pgxpool.New(context.Background(), requireDB(t))
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
@@ -146,7 +148,7 @@ func TestDashboardAPICRUD(t *testing.T) {
 
 func newTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	pool, err := pgxpool.New(context.Background(), testDSN())
+	pool, err := pgxpool.New(context.Background(), requireDB(t))
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
