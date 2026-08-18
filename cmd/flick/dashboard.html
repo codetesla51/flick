@@ -426,32 +426,41 @@ searchEl.addEventListener("input", () => { page = 1; render(); });
 /* ---------- actions ---------- */
 let pendingDelete = null;
 listEl.addEventListener("click", async (e) => {
-  const btn = e.target.closest("button[data-act]");
-  if (!btn) return;
-  const row = btn.closest("[data-key]");
-  const key = row.dataset.key;
-  const act = btn.dataset.act;
+  try {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const row = btn.closest("[data-key]");
+    const key = row ? row.dataset.key : null;
+    if (!row || !key) return;
+    const act = btn.dataset.act;
 
-  if (act === "toggle") return doToggle(row, key);
-  if (act === "edit") return openModal(key);
-  if (act === "delete") {
-    if (pendingDelete) pendingDelete.querySelector("[data-confirm]").classList.add("hidden");
-    pendingDelete = row;
-    row.querySelector("[data-confirm]").classList.remove("hidden");
-    return;
-  }
-  if (act === "delMobile") {
-    if (btn.dataset.armed) return doDelete(key);
-    btn.dataset.armed = "1";
-    btn.classList.add("bg-bad/15");
-    btn.innerHTML = '<i class="ph ph-check text-sm"></i> Delete?';
-    setTimeout(() => render(), 2500);
-    return;
-  }
-  if (act === "confirmDelete") return doDelete(key);
-  if (act === "cancelDelete") {
-    row.querySelector("[data-confirm]").classList.add("hidden");
-    if (pendingDelete === row) pendingDelete = null;
+    if (act === "toggle") return doToggle(row, key);
+    if (act === "edit") return openModal(key);
+    if (act === "delete") {
+      // Hide any already-open confirm popover.
+      if (pendingDelete) pendingDelete.querySelector("[data-confirm]")?.classList.add("hidden");
+      pendingDelete = row;
+      const confirmEl = row.querySelector("[data-confirm]");
+      if (confirmEl) { confirmEl.classList.remove("hidden"); return; }
+      // Fallback (shouldn't happen): no popover in this row → ask natively.
+      if (window.confirm("Delete " + key + "?")) return doDelete(key);
+      return;
+    }
+    if (act === "delMobile") {
+      if (btn.dataset.armed) return doDelete(key);
+      btn.dataset.armed = "1";
+      btn.classList.add("bg-bad/15");
+      btn.innerHTML = '<i class="ph ph-check text-sm"></i> Delete?';
+      setTimeout(() => render(), 2500);
+      return;
+    }
+    if (act === "confirmDelete") return doDelete(key);
+    if (act === "cancelDelete") {
+      row.querySelector("[data-confirm]")?.classList.add("hidden");
+      if (pendingDelete === row) pendingDelete = null;
+    }
+  } catch (err) {
+    toast("Action failed: " + err.message, "bad");
   }
 });
 
