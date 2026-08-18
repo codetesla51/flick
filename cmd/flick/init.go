@@ -11,12 +11,15 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Set up the database (migrations + replication check)",
+	Short: "Set up the database (migrations + replication probe)",
 	Long: `Set up the database.
 
-Applies the embedded goose migrations (flags + outbox tables) and verifies
-the database is ready for logical replication streaming. The replication
-slot and publication are created automatically by flick serve on first run.`,
+Applies the embedded goose migrations (flags + outbox tables), verifies the
+database is ready for logical replication, and runs an end-to-end probe:
+it creates the flick_slot slot and flick_pub publication (the same ones
+flick serve uses), writes a probe row to the outbox table, and confirms the
+stream delivers it — so you know replication actually works before running
+flick serve.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dsn := resolveDSN()
@@ -36,13 +39,23 @@ slot and publication are created automatically by flick serve on first run.`,
 		fmt.Println("migrations: up to date")
 
 		var walLevel string
-		if err := db.QueryRowContext(cmd.Context(), `SHOW wal_level`).Scan(&walLevel); err != nil {
+		var pendingRestart bool
+		if err := db.QueryRowContext(cmd.Context(),
+			`SELECT setting, pending_restart FROM pg_settings WHERE name = 'wal_level'`,
+		).Scan(&walLevel, &pendingRestart); err != nil {
 			return fmt.Errorf("check wal_level: %w", err)
 		}
 		if walLevel != "logical" {
+			if pendingRestart {
+				return fmt.Errorf("wal_level = %q — 'logical' is configured but Postgres hasn't restarted\n  fix: restart Postgres to apply the pending wal_level change", walLevel)
+			}
 			return fmt.Errorf("wal_level = %q, but logical replication streaming requires 'logical'\n  fix: run ALTER SYSTEM SET wal_level = 'logical' (as superuser), then restart Postgres", walLevel)
 		}
 		fmt.Println("wal_level: logical")
+
+		if err := runReplicationProbe(cmd.Context(), dsn); err != nil {
+			return err
+		}
 
 		fmt.Println("ready: run `flick serve` to start the sync server")
 		return nil
