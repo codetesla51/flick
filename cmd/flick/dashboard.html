@@ -8,166 +8,240 @@
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script>
 tailwind.config = {
   darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Geist', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
-        surface: 'rgb(var(--surface) / <alpha-value>)',
-        raised:  'rgb(var(--raised) / <alpha-value>)',
-        line:    'rgb(var(--line) / <alpha-value>)',
-        ink:     'rgb(var(--ink) / <alpha-value>)',
-        faint:   'rgb(var(--faint) / <alpha-value>)',
-        accent:  'rgb(var(--accent) / <alpha-value>)',
-        good:    'rgb(var(--good) / <alpha-value>)',
-        bad:     'rgb(var(--bad) / <alpha-value>)',
-        warn:    'rgb(var(--warn) / <alpha-value>)',
-      },
-      boxShadow: {
-        card: '0 1px 2px rgb(0 0 0 / 0.04), 0 4px 12px rgb(0 0 0 / 0.03)',
-        pop:  '0 12px 40px rgb(0 0 0 / 0.16)',
+        bg: 'var(--bg)',
+        raised: 'var(--raised)',
+        recessed: 'var(--recessed)',
+        hover: 'var(--hover)',
+        ink: 'var(--ink)',
+        secondary: 'var(--secondary)',
+        muted: 'var(--muted)',
+        blue: 'var(--blue)',
+        red: 'var(--red)',
+        amber: 'var(--amber)',
+        green: 'var(--green)',
       },
     },
   },
 };
 </script>
 <style>
+  /* ---- Design tokens (achromatic; blue is the only interactive accent) ---- */
   :root {
-    --surface: 248 247 243;   /* warm off-white */
-    --raised:  253 252 249;   /* cards */
-    --line:    228 226 219;
-    --ink:     28 26 23;      /* off-black */
-    --faint:   110 108 101;   /* muted text */
-    --accent:  92 90 214;     /* muted indigo */
-    --good:    34 142 84;
-    --bad:     197 60 52;
-    --warn:    176 121 18;
+    --bg: #FAFAFA;
+    --raised: #FFFFFF;
+    --recessed: #F2F2F2;
+    --hover: #EBEBEB;
+    --ink: #171717;
+    --secondary: #4D4D4D;
+    --muted: #8F8F8F;
+    --blue: #0072F5;
+    --blue-focus: #005FCC;
+    --red: #E5484D;
+    --amber: #FF990A;
+    --green: #45A557;
+    /* shadow-as-border + elevation layers */
+    --bd: 0 0 0 1px rgb(0 0 0 / 0.08);
+    --shadow-sm: 0px 2px 2px rgb(0 0 0 / 0.04);
+    --shadow-md: 0px 2px 2px rgb(0 0 0 / 0.04), 0px 8px 8px -8px rgb(0 0 0 / 0.04);
+    --shadow-pop: 0px 1px 1px rgb(0 0 0 / 0.02), 0px 8px 16px -4px rgb(0 0 0 / 0.04), 0px 24px 32px -8px rgb(0 0 0 / 0.06);
+    --shadow-menu: 0px 1px 1px rgb(0 0 0 / 0.02), 0px 4px 8px -4px rgb(0 0 0 / 0.04), 0px 16px 24px -8px rgb(0 0 0 / 0.06);
+    /* double-ring focus: white gap + blue indicator */
+    --ring: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--blue);
+    --ease: cubic-bezier(.175, .885, .32, 1.1);
   }
   .dark {
-    --surface: 20 20 22;      /* off-black */
-    --raised:  26 26 29;
-    --line:    45 45 49;
-    --ink:     236 235 231;   /* off-white text */
-    --faint:   156 155 147;
-    --accent:  141 138 247;
-    --good:    96 199 143;
-    --bad:     229 107 96;
-    --warn:    226 174 84;
+    --bg: #0A0A0A;
+    --raised: #111111;
+    --recessed: #1A1A1A;
+    --hover: #1F1F1F;
+    --ink: #EDEDED;
+    --secondary: #A0A0A0;
+    --muted: #6F6F6F;
+    --blue: #0070F3;
+    --blue-focus: #3291FF;
+    --red: #EB5757;
+    --amber: #FF990A;
+    --green: #50B962;
+    --bd: 0 0 0 1px rgb(255 255 255 / 0.12);
+    --shadow-sm: 0px 2px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0px 2px 2px rgb(0 0 0 / 0.4), 0px 8px 8px -8px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0px 1px 1px rgb(0 0 0 / 0.3), 0px 8px 16px -4px rgb(0 0 0 / 0.4), 0px 24px 32px -8px rgb(0 0 0 / 0.6);
+    --shadow-menu: 0px 1px 1px rgb(0 0 0 / 0.3), 0px 4px 8px -4px rgb(0 0 0 / 0.4), 0px 16px 24px -8px rgb(0 0 0 / 0.6);
+    --ring: 0 0 0 2px #0A0A0A, 0 0 0 4px var(--blue);
   }
-  html { -webkit-font-smoothing: antialiased; }
-  body { font-feature-settings: 'cv11'; }
-  ::selection { background: rgb(var(--accent) / 0.25); }
-  .focus-ring:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 6px; }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { background: var(--bg); color: var(--ink); font-feature-settings: 'liga'; }
+  ::selection { background: rgb(0 114 245 / 0.18); }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+
+  /* ---- surfaces: shadow-as-border, never CSS border ---- */
+  .card { background: var(--raised); border-radius: 12px; box-shadow: var(--bd); }
+  .card-hover { transition: box-shadow .15s ease; }
+  .card-hover:hover { box-shadow: var(--bd), var(--shadow-sm); }
+  .bd { box-shadow: var(--bd); }
+  .bd-menu { box-shadow: var(--bd), var(--shadow-menu); }
+  .bd-pop { box-shadow: var(--bd), var(--shadow-pop); }
+
+  /* ---- buttons: ghost-first, color-only interactions ---- */
+  .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; color: var(--secondary);
+    border-radius: 6px;
+    transition: background-color .12s ease, color .12s ease;
   }
-  @keyframes pulse-live { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .btn-ghost:hover { background: var(--hover); color: var(--ink); }
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--bg);
+    border-radius: 6px; font-weight: 500;
+    transition: background-color .12s ease;
+  }
+  .btn-primary:hover { background: color-mix(in srgb, var(--ink) 82%, transparent); }
+
+  /* ---- inputs: transparent, shadow border, focus outline ---- */
+  .input {
+    height: 40px; width: 100%; background: transparent;
+    border-radius: 6px; box-shadow: var(--bd);
+    font-size: 14px; color: var(--ink);
+    transition: box-shadow .12s ease;
+  }
+  .input-sm { height: 36px; }
+  .input::placeholder { color: var(--muted); }
+  .input:focus, .ta:focus { outline: 1px solid var(--blue-focus); outline-offset: 0; box-shadow: none; }
+  .ta {
+    width: 100%; background: transparent; border-radius: 6px; box-shadow: var(--bd);
+    font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: var(--ink);
+    resize: vertical; line-height: 1.6;
+  }
+
+  /* ---- double-ring focus pattern ---- */
+  .focus-ring:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+
+  /* ---- header ---- */
+  .header {
+    position: sticky; top: 0; z-index: 30;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.08);
+  }
+  .dark .header { box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.1); }
+
+  /* ---- motion: swift easing, restrained ---- */
   .live-dot { animation: pulse-live 2.4s ease-in-out infinite; }
-  @keyframes slide-in { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
-  .toast-in { animation: slide-in .18s ease-out; }
-  @keyframes pop-in { from { opacity: 0; transform: scale(.97) translateY(6px) } to { opacity: 1; transform: none } }
-  .modal-in { animation: pop-in .2s cubic-bezier(.16,1,.3,1); }
+  @keyframes pulse-live { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+  @keyframes modal-in { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: scale(1) } }
+  .modal-in { animation: modal-in .3s var(--ease); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+  .toast-in { animation: toast-in .2s var(--ease); }
+  @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+  .fade-in { animation: fade-in .2s ease; }
+  summary::-webkit-details-marker { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
 </style>
 </head>
-<body class="bg-surface text-ink font-sans min-h-screen">
+<body class="font-sans min-h-screen">
 
-<!-- ============ HEADER ============ -->
-<header class="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">
-  <div class="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center gap-4">
-    <a href="/" class="flex items-center gap-2.5 focus-ring">
-      <span class="h-8 w-8 rounded-lg bg-ink text-surface grid place-items-center">
-        <i class="ph ph-faders text-base"></i>
-      </span>
-      <span class="text-[15px] font-semibold tracking-tight">flick</span>
-      <span class="hidden sm:inline text-xs text-faint font-medium">flag console</span>
+<!-- ============ HEADER (64px, hairline shadow, blur) ============ -->
+<header class="header">
+  <div class="mx-auto max-w-[1200px] px-6 h-16 flex items-center gap-8">
+    <a href="/" class="flex items-center gap-2.5 focus-ring rounded-md">
+      <span class="h-7 w-7 rounded-md bg-ink text-bg grid place-items-center"><i class="ph ph-faders text-sm"></i></span>
+      <span class="text-[15px] font-semibold tracking-[-0.02em]">flick</span>
     </a>
 
-    <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
-      <div id="liveBadge" class="hidden sm:flex items-center gap-2 rounded-full border border-line px-3 h-8 text-xs text-faint" title="Live updates">
-        <span id="liveDot" class="h-2 w-2 rounded-full bg-good live-dot"></span>
+    <div class="ml-auto flex items-center gap-1">
+      <span class="hidden sm:flex items-center gap-2 px-3 h-8 text-[13px] text-secondary" title="Live sync status">
+        <span id="liveDot" class="size-2.5 rounded-full bg-muted live-dot"></span>
         <span id="liveText">connecting…</span>
-      </div>
-      <button id="themeBtn" class="h-9 w-9 grid place-items-center rounded-lg border border-line text-faint hover:text-ink hover:border-ink/20 transition-colors focus-ring" aria-label="Toggle theme">
-        <i id="themeIcon" class="ph ph-moon text-lg"></i>
+      </span>
+      <button id="themeBtn" class="btn-ghost h-8 w-8 focus-ring" aria-label="Toggle theme">
+        <i id="themeIcon" class="ph ph-moon text-base"></i>
       </button>
-      <button id="newBtn" class="flex items-center gap-2 h-9 rounded-lg bg-ink text-surface px-3.5 text-sm font-medium hover:opacity-90 active:scale-[.98] transition-all focus-ring">
-        <i class="ph ph-plus text-base"></i><span class="hidden xs:inline sm:inline">New flag</span>
+      <button id="newBtn" class="btn-primary h-8 px-3.5 gap-1.5 text-[13px] focus-ring ml-1">
+        <i class="ph ph-plus text-sm"></i><span class="hidden sm:inline">New flag</span>
       </button>
     </div>
   </div>
 </header>
 
-<main class="mx-auto max-w-6xl px-4 sm:px-6 pb-24 pt-5">
+<main class="mx-auto max-w-[1200px] px-6 pb-24 pt-8">
 
-  <!-- ============ METRICS STRIP ============ -->
-  <section aria-label="Live metrics" class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
-      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-flag text-base"></i></span>
-      <div class="min-w-0">
-        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Flags</div>
-        <div class="font-mono text-xl font-semibold tabular-nums" id="mFlags">–</div>
+  <!-- ============ METRICS (achromatic cards, values only) ============ -->
+  <section aria-label="Live metrics" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-8">
+    <div class="card px-5 py-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[12px] font-medium text-secondary">Flags</span>
+        <i class="ph ph-flag text-sm text-muted"></i>
       </div>
+      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mFlags">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
-      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-paper-plane-tilt text-base"></i></span>
-      <div class="min-w-0">
-        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Delivered</div>
-        <div class="font-mono text-xl font-semibold tabular-nums" id="mDelivered">–</div>
+    <div class="card px-5 py-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[12px] font-medium text-secondary">Delivered</span>
+        <i class="ph ph-paper-plane-tilt text-sm text-muted"></i>
       </div>
+      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mDelivered">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
-      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-gauge text-base"></i></span>
-      <div class="min-w-0">
-        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">WAL lag</div>
-        <div class="font-mono text-xl font-semibold tabular-nums" id="mLag">–</div>
+    <div class="card px-5 py-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[12px] font-medium text-secondary">WAL lag</span>
+        <i class="ph ph-gauge text-sm text-muted"></i>
       </div>
+      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mLag">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
-      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-lightning text-base"></i></span>
-      <div class="min-w-0">
-        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Changes</div>
-        <div class="font-mono text-xl font-semibold tabular-nums" id="mChanges">–</div>
+    <div class="card px-5 py-4">
+      <div class="flex items-center justify-between">
+        <span class="text-[12px] font-medium text-secondary">Changes</span>
+        <i class="ph ph-lightning text-sm text-muted"></i>
       </div>
+      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mChanges">–</div>
     </div>
   </section>
 
-  <!-- ============ FLAGS LIST ============ -->
+  <!-- ============ FLAGS ============ -->
   <section>
-    <div class="flex items-center gap-3 mb-3">
-      <h1 class="text-base font-semibold tracking-tight">Flags</h1>
-      <span id="flagCount" class="text-xs text-faint font-medium font-mono"></span>
-      <div class="relative ml-auto w-full max-w-[220px]">
-        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-sm text-faint pointer-events-none"></i>
-        <input id="search" type="search" placeholder="Search flags…" autocomplete="off"
-          class="w-full h-9 rounded-lg border border-line bg-raised pl-9 pr-3 text-sm placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/60 transition-shadow" />
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="text-[15px] font-medium tracking-[-0.02em]">Flags</h2>
+      <span id="flagCount" class="text-[12px] text-muted font-mono"></span>
+      <div class="relative ml-auto w-full max-w-[240px]">
+        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted pointer-events-none"></i>
+        <input id="search" type="search" placeholder="Search flags…" autocomplete="off" class="input pl-9" />
       </div>
     </div>
 
-    <div id="listHeader" class="hidden md:grid grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] gap-3 px-4 pb-2 text-[11px] uppercase tracking-wider text-faint font-medium">
+    <div id="listHeader" class="hidden md:grid grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] gap-3 px-6 pb-2 text-[12px] font-medium text-secondary">
       <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
     </div>
     <div id="flags" class="flex flex-col gap-2"></div>
 
-    <div id="pager" class="flex items-center justify-between gap-3 mt-4"></div>
+    <div id="pager" class="flex items-center justify-between gap-3 mt-5"></div>
 
-    <div id="empty" class="hidden rounded-xl border border-dashed border-line px-6 py-16 text-center">
-      <i class="ph ph-flag text-4xl text-faint/60"></i>
+    <div id="empty" class="hidden px-6 py-20 text-center">
+      <span class="inline-grid place-items-center h-12 w-12 rounded-xl bg-recessed text-muted"><i class="ph ph-flag text-xl"></i></span>
       <p class="mt-4 text-sm font-medium">No flags yet</p>
-      <p class="mt-1 text-sm text-faint max-w-sm mx-auto">Create your first flag and it syncs to every connected flagd client within milliseconds — try it live.</p>
-      <button id="emptyNew" class="mt-5 inline-flex items-center gap-2 h-9 rounded-lg bg-ink text-surface px-4 text-sm font-medium hover:opacity-90 focus-ring">
-        <i class="ph ph-plus text-base"></i> Create your first flag
+      <p class="mt-1.5 text-[13px] text-secondary max-w-sm mx-auto">Create your first flag and it syncs to every connected flagd client within milliseconds.</p>
+      <button id="emptyNew" class="btn-primary mt-6 h-9 px-4 gap-1.5 text-[13px] focus-ring">
+        <i class="ph ph-plus text-sm"></i> Create your first flag
       </button>
     </div>
   </section>
 
   <!-- last event line -->
-  <footer class="mt-8 text-xs text-faint flex items-center gap-2">
+  <footer class="mt-12 text-[12px] text-muted flex items-center gap-2">
     <i class="ph ph-activity text-sm"></i>
     <span id="lastEvent">last event: —</span>
   </footer>
@@ -175,69 +249,67 @@ tailwind.config = {
 
 <!-- ============ FLAG MODAL ============ -->
 <div id="modalBackdrop" class="fixed inset-0 z-40 hidden">
-  <div class="absolute inset-0 bg-black/30 dark:bg-black/55" id="modalScrim"></div>
+  <div class="absolute inset-0 bg-[rgb(23_23_23/0.4)] dark:bg-black/60 fade-in" id="modalScrim"></div>
   <div class="absolute inset-x-0 bottom-0 md:inset-0 md:grid md:place-items-center p-0 md:p-6 overflow-y-auto">
     <div id="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
-      class="modal-in w-full md:max-w-lg rounded-t-2xl md:rounded-2xl border border-line bg-raised shadow-pop">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-line">
-        <h2 id="modalTitle" class="text-sm font-semibold tracking-tight">New flag</h2>
-        <button id="modalClose" class="h-9 w-9 grid place-items-center rounded-lg text-faint hover:text-ink hover:bg-line/40 transition-colors focus-ring" aria-label="Close">
-          <i class="ph ph-x text-lg"></i>
-        </button>
+      class="modal-in w-full md:max-w-lg rounded-t-xl md:rounded-xl bd-pop" style="background:var(--raised)">
+      <div class="flex items-center justify-between pl-5 pr-3 h-14">
+        <h2 id="modalTitle" class="text-[14px] font-semibold tracking-[-0.01em]">New flag</h2>
+        <button id="modalClose" class="btn-ghost h-8 w-8 focus-ring" aria-label="Close"><i class="ph ph-x text-base"></i></button>
       </div>
 
-      <form id="flagForm" class="px-5 py-4 space-y-4" novalidate>
+      <form id="flagForm" class="px-5 pb-5 space-y-4" novalidate>
         <div>
-          <label for="fKey" class="block text-[12px] font-medium text-faint mb-1.5">Key</label>
-          <input id="fKey" required class="w-full h-9 rounded-lg border border-line bg-surface px-3 font-mono text-sm placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/50" placeholder="show-banner" autocomplete="off" />
-          <p id="fKeyErr" class="hidden mt-1.5 text-xs text-bad"></p>
+          <label for="fKey" class="block text-[13px] font-medium text-secondary mb-1.5">Key</label>
+          <input id="fKey" required class="input font-mono" placeholder="show-banner" autocomplete="off" />
+          <p id="fKeyErr" class="hidden mt-1.5 text-[12px] text-red"></p>
         </div>
 
         <div>
-          <span class="block text-[12px] font-medium text-faint mb-1.5">State</span>
-          <div class="grid grid-cols-2 gap-1.5 p-1 rounded-lg border border-line bg-surface w-fit">
-            <button type="button" data-state="ENABLED" class="stateSeg h-8 px-4 rounded-md text-sm font-medium text-faint hover:text-ink focus-ring">Enabled</button>
-            <button type="button" data-state="DISABLED" class="stateSeg h-8 px-4 rounded-md text-sm font-medium text-faint hover:text-ink focus-ring">Disabled</button>
+          <span class="block text-[13px] font-medium text-secondary mb-1.5">State</span>
+          <div class="grid grid-cols-2 gap-1 p-1 rounded-md bg-recessed w-fit">
+            <button type="button" data-state="ENABLED" class="stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors">Enabled</button>
+            <button type="button" data-state="DISABLED" class="stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors">Disabled</button>
           </div>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <span class="text-[12px] font-medium text-faint">Variants</span>
-            <button type="button" id="addVariant" class="text-xs font-medium text-accent hover:underline focus-ring flex items-center gap-1">
+            <span class="text-[13px] font-medium text-secondary">Variants</span>
+            <button type="button" id="addVariant" class="btn-ghost h-7 px-2 gap-1 text-[12px] font-medium focus-ring">
               <i class="ph ph-plus text-sm"></i> Add variant
             </button>
           </div>
           <div id="variantRows" class="space-y-2"></div>
-          <p id="fVariantsErr" class="hidden mt-1.5 text-xs text-bad"></p>
+          <p id="fVariantsErr" class="hidden mt-1.5 text-[12px] text-red"></p>
         </div>
 
         <div>
-          <label for="fDefault" class="block text-[12px] font-medium text-faint mb-1.5">Default variant</label>
-          <select id="fDefault" class="w-full h-9 rounded-lg border border-line bg-surface px-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"></select>
+          <label for="fDefault" class="block text-[13px] font-medium text-secondary mb-1.5">Default variant</label>
+          <select id="fDefault" class="input font-mono px-2"></select>
         </div>
 
         <details class="group">
-          <summary class="cursor-pointer text-[12px] font-medium text-faint hover:text-ink focus-ring select-none">Targeting &amp; metadata</summary>
+          <summary class="btn-ghost h-8 px-2 gap-1 text-[13px] font-medium select-none" style="width:fit-content">
+            Targeting &amp; metadata <i class="ph ph-caret-down text-sm transition-transform group-open:rotate-180"></i>
+          </summary>
           <div class="mt-3 space-y-3">
             <div>
-              <label for="fTargeting" class="block text-[11px] font-medium text-faint mb-1">targeting <span class="font-normal">(JSON)</span></label>
-              <textarea id="fTargeting" rows="3" spellcheck="false" class="w-full rounded-lg border border-line bg-surface p-2.5 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent/50">{"country":["NG"]}</textarea>
+              <label for="fTargeting" class="block text-[12px] font-medium text-muted mb-1">targeting <span class="font-normal">(JSON)</span></label>
+              <textarea id="fTargeting" rows="3" spellcheck="false" class="ta p-2.5">{"country":["NG"]}</textarea>
             </div>
             <div>
-              <label for="fMetadata" class="block text-[11px] font-medium text-faint mb-1">metadata <span class="font-normal">(JSON)</span></label>
-              <textarea id="fMetadata" rows="2" spellcheck="false" class="w-full rounded-lg border border-line bg-surface p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent/50">{"owner":"platform"}</textarea>
+              <label for="fMetadata" class="block text-[12px] font-medium text-muted mb-1">metadata <span class="font-normal">(JSON)</span></label>
+              <textarea id="fMetadata" rows="2" spellcheck="false" class="ta p-2.5">{"owner":"platform"}</textarea>
             </div>
           </div>
         </details>
 
-        <p id="fFormErr" class="hidden text-xs text-bad"></p>
+        <p id="fFormErr" class="hidden text-[12px] text-red"></p>
 
-        <div class="flex items-center justify-end gap-2 pt-1 border-t border-line">
-          <button type="button" id="modalCancel" class="h-9 px-4 rounded-lg text-sm font-medium text-faint hover:text-ink hover:bg-line/40 focus-ring">Cancel</button>
-          <button type="submit" class="h-9 px-4 rounded-lg bg-ink text-surface text-sm font-medium hover:opacity-90 active:scale-[.98] transition-all focus-ring">
-            Save flag
-          </button>
+        <div class="flex items-center justify-end gap-2 pt-4">
+          <button type="button" id="modalCancel" class="btn-ghost h-9 px-4 text-[13px] focus-ring">Cancel</button>
+          <button type="submit" class="btn-primary h-9 px-4 text-[13px] focus-ring">Save flag</button>
         </div>
       </form>
     </div>
@@ -256,7 +328,7 @@ const param = new URLSearchParams(location.search).get("theme");
 const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
 const setTheme = (dark) => {
   document.documentElement.classList.toggle("dark", dark);
-  document.getElementById("themeIcon").className = "ph text-lg " + (dark ? "ph-sun" : "ph-moon");
+  document.getElementById("themeIcon").className = "ph text-base " + (dark ? "ph-sun" : "ph-moon");
   localStorage.setItem("flick-theme", dark ? "dark" : "light");
 };
 setTheme(param ? param === "dark" : stored ? stored === "dark" : prefersDark);
@@ -288,7 +360,7 @@ const refreshFlags = async () => {
 
 /* ---------- render ---------- */
 // API returns variants/targeting/metadata as JSON objects; tolerate the
-// old string form too (CRUD was silently breaking on the string parse).
+// old string form too.
 const obj = (x) => (typeof x === "string" ? JSON.parse(x) : x || {});
 function variantCount(v) {
   try { return Object.keys(obj(v)).length; } catch (_) { return 0; }
@@ -306,64 +378,58 @@ function fmtTime(t) {
 }
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+const switchHTML = (f, label) => `
+  <button data-act="toggle" role="switch" aria-checked="${f.state === "ENABLED"}" aria-label="Toggle ${esc(f.key)}"
+    class="inline-flex items-center gap-2.5 h-8 px-2 rounded-md transition-colors focus-ring cursor-pointer">
+    <span class="relative h-[18px] w-8 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-blue" : "bg-recessed bd"}" style="flex:none">
+      <span class="absolute top-[1px] h-4 w-4 rounded-full transition-all ${f.state === "ENABLED" ? "left-[14px]" : "left-[1px]"} knob" style="background:#fff;box-shadow:0 0 0 1px rgb(0 0 0/.08),0 1px 2px rgb(0 0 0/.18)"></span>
+    </span>
+    <span class="text-[13px] font-medium ${f.state === "ENABLED" ? "text-ink" : "text-secondary"}">${label}</span>
+  </button>`;
+
 function rowHTML(f) {
   const targeting = hasTargeting(f.targeting);
+  const on = f.state === "ENABLED";
   return `
-  <div data-key="${esc(f.key)}" class="group rounded-xl border border-line bg-raised shadow-card hover:border-ink/25 hover:shadow-md transition-all duration-150"
-       style="margin:0">
-    <div class="px-4 py-3 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
+  <div data-key="${esc(f.key)}" class="card card-hover">
+    <div class="px-6 py-3.5 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
       <div class="flex items-center gap-3 min-w-0">
-        <span class="shrink-0 h-8 w-8 rounded-lg grid place-items-center ${f.state === "ENABLED" ? "bg-good/10 text-good" : "bg-line/50 text-faint"}">
-          <i class="ph ${f.state === "ENABLED" ? "ph-check" : "ph-pause"} text-base"></i>
-        </span>
+        <span class="size-2.5 rounded-full ${on ? "bg-green" : "bg-muted"}" aria-hidden="true"></span>
         <div class="min-w-0">
-          <p class="font-mono text-sm font-semibold truncate">${esc(f.key)}</p>
-          <p class="text-[11px] text-faint md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
+          <p class="font-mono text-[13px] font-medium truncate">${esc(f.key)}</p>
+          <p class="text-[11px] text-muted md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
         </div>
-        <div class="ml-auto flex items-center gap-1 md:hidden">
-          <span class="text-[10px] px-2 py-1 rounded-full font-medium ${f.state === "ENABLED" ? "bg-good/10 text-good" : "bg-line/50 text-faint"}">${f.state}</span>
+        <div class="ml-auto flex items-center gap-1.5 md:hidden">
+          <span class="text-[11px] font-medium ${on ? "text-green" : "text-muted"}">${f.state}</span>
         </div>
       </div>
 
-      <span class="hidden md:block truncate font-mono text-xs text-ink/80">${esc(f.defaultVariant)}</span>
-      <span class="hidden md:block font-mono text-xs text-faint">${variantCount(f.variants)}</span>
+      <span class="hidden md:block truncate font-mono text-[12px] text-secondary">${esc(f.defaultVariant)}</span>
+      <span class="hidden md:block font-mono text-[12px] text-muted">${variantCount(f.variants)}</span>
       <span class="hidden md:block">
-        ${targeting ? `<span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium"><i class="ph ph-target text-xs"></i> targeted</span>` : '<span class="text-xs text-faint/70">—</span>'}
+        ${targeting ? `<span class="inline-flex items-center gap-1.5 text-[12px] text-secondary" title="Has targeting rules"><span class="size-2.5 rounded-full bg-blue"></span>targeted</span>` : '<span class="text-[12px] text-muted/60">—</span>'}
       </span>
-      <span class="hidden md:block text-xs text-faint">${fmtTime(f.updatedAt)}</span>
+      <span class="hidden md:block text-[12px] text-muted">${fmtTime(f.updatedAt)}</span>
 
       <div class="hidden md:flex justify-end">
-        <button data-act="toggle" role="switch" aria-checked="${f.state === "ENABLED"}" aria-label="Toggle ${esc(f.key)}"
-          class="inline-flex items-center gap-2 h-8 pl-1 pr-3 rounded-full border transition-colors focus-ring cursor-pointer
-          ${f.state === "ENABLED" ? "border-good/40 bg-good/10" : "border-line bg-line/40"}">
-          <span class="relative h-5 w-9 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-good" : "bg-line"}" style="box-shadow:inset 0 1px 2px rgb(0 0 0/.12)">
-            <span class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${f.state === "ENABLED" ? "left-[18px]" : "left-0.5"}" style="box-shadow:0 1px 2px rgb(0 0 0/.2)"></span>
-          </span>
-          <span class="text-xs font-semibold ${f.state === "ENABLED" ? "text-good" : "text-faint"}">${f.state === "ENABLED" ? "Enabled" : "Disabled"}</span>
-        </button>
+        ${switchHTML(f, on ? "Enabled" : "Disabled")}
       </div>
 
-      <div class="md:hidden flex items-center gap-2 mt-2">
-        <button data-act="toggle" class="flex items-center justify-center gap-2 flex-1 h-9 rounded-lg text-xs font-semibold transition-colors focus-ring
-          ${f.state === "ENABLED" ? "bg-good/15 text-good" : "bg-line/50 text-faint"}">
-          <span class="relative h-4 w-8 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-good" : "bg-line"}" style="box-shadow:inset 0 1px 2px rgb(0 0 0/.12)">
-            <span class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${f.state === "ENABLED" ? "left-[16px]" : "left-0.5"}" style="box-shadow:0 1px 2px rgb(0 0 0/.2)"></span>
-          </span>
-          ${f.state === "ENABLED" ? "Enabled" : "Disabled"}
-        </button>
+      <div class="md:hidden flex items-center gap-2 mt-2.5">
+        ${switchHTML(f, on ? "Enabled" : "Disabled")}
       </div>
     </div>
-    <div class="md:hidden flex items-center gap-1.5 px-4 pb-3 -mt-1 ml-[44px]">
-      <button data-act="edit" class="h-8 px-2.5 rounded-lg text-xs font-medium text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring flex items-center gap-1"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
-      <button data-act="delMobile" class="h-8 px-2.5 rounded-lg text-xs font-medium text-bad/80 hover:bg-bad/10 transition-colors focus-ring flex items-center gap-1"><i class="ph ph-trash text-sm"></i> Delete</button>
+    <div class="md:hidden flex items-center gap-1 px-6 pb-3 -mt-0.5 pl-[44px]">
+      <button data-act="edit" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
+      <button data-act="delMobile" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring hover:text-red"><i class="ph ph-trash text-sm"></i> Delete</button>
     </div>
-    <div class="hidden md:flex items-center gap-0.5 px-4 pb-3 justify-end">
-      <button data-act="edit" class="h-8 w-8 grid place-items-center rounded-lg text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
+    <div class="hidden md:flex items-center gap-0.5 px-6 pb-3 justify-end">
+      <button data-act="edit" class="btn-ghost h-8 w-8 focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
       <span class="relative">
-        <button data-act="delete" class="h-8 w-8 grid place-items-center rounded-lg text-faint hover:bg-bad/10 hover:text-bad transition-colors focus-ring" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash text-sm"></i></button>
-        <span data-confirm class="hidden absolute right-0 top-9 z-10 flex rounded-lg border border-line bg-raised shadow-pop p-1.5">
-          <button data-act="confirmDelete" class="h-8 px-3 rounded-md text-xs font-semibold bg-bad text-white hover:opacity-90 focus-ring">Delete</button>
-          <button data-act="cancelDelete" class="h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-line/50 focus-ring" aria-label="Cancel"><i class="ph ph-x text-sm"></i></button>
+        <button data-act="delete" class="btn-ghost h-8 w-8 focus-ring hover:text-red" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash text-sm"></i></button>
+        <span data-confirm class="hidden absolute right-0 top-9 z-10 rounded-lg bd-menu p-1" style="background:var(--raised)">
+          <button data-act="confirmDelete" class="h-8 px-3 rounded-md text-[13px] font-medium text-red hover:bg-recessed focus-ring">Delete</button>
+          <button data-act="cancelDelete" class="h-8 w-8 grid place-items-center rounded-md text-muted hover:bg-recessed focus-ring" aria-label="Cancel"><i class="ph ph-x text-sm"></i></button>
         </span>
       </span>
     </div>
@@ -390,16 +456,16 @@ function renderPager(filtered) {
     nums.push(i);
   }
   const numBtns = nums.map((n) => n === "…"
-    ? `<span class="px-1 text-faint">…</span>`
-    : `<button data-pg="${n}" aria-label="Page ${n}" class="h-7 min-w-7 px-1.5 rounded-md text-xs font-mono focus-ring transition-colors ${n === page ? "bg-ink text-surface" : "text-faint hover:bg-line/60 hover:text-ink"}">${n}</button>`).join("");
+    ? `<span class="px-1 text-muted">…</span>`
+    : `<button data-pg="${n}" aria-label="Page ${n}" class="h-7 min-w-7 px-1.5 rounded-md text-[12px] font-mono focus-ring transition-colors ${n === page ? "bg-ink text-bg font-medium" : "text-secondary hover:bg-hover hover:text-ink"}">${n}</button>`).join("");
   pagerEl.innerHTML = `
-    <span class="text-[11px] text-faint font-mono">${from}–${to} of ${filtered.length}</span>
+    <span class="text-[12px] text-muted font-mono">${from}–${to} of ${filtered.length}</span>
     <div class="flex items-center gap-1">
       <button data-pg="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Previous page"
-        class="h-7 w-7 grid place-items-center rounded-md text-faint hover:bg-line/60 hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-left text-sm"></i></button>
+        class="h-7 w-7 grid place-items-center rounded-md text-secondary hover:bg-hover hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-left text-sm"></i></button>
       ${numBtns}
       <button data-pg="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Next page"
-        class="h-7 w-7 grid place-items-center rounded-md text-faint hover:bg-line/60 hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-right text-sm"></i></button>
+        class="h-7 w-7 grid place-items-center rounded-md text-secondary hover:bg-hover hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-right text-sm"></i></button>
     </div>`;
 }
 
@@ -410,7 +476,7 @@ function render() {
   const filtered = q ? flags.filter((f) => f.key.toLowerCase().includes(q)) : flags;
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   listEl.innerHTML = slice.map(rowHTML).join("") ||
-    `<div class="rounded-xl border border-dashed border-line px-6 py-10 text-center text-sm text-faint">No flags match “${esc(q)}”</div>`;
+    `<div class="px-6 py-14 text-center text-[13px] text-muted">No flags match “${esc(q)}”</div>`;
   listEl.classList.toggle("hidden", flags.length === 0);
   renderPager(filtered);
 }
@@ -449,7 +515,7 @@ listEl.addEventListener("click", async (e) => {
     if (act === "delMobile") {
       if (btn.dataset.armed) return doDelete(key);
       btn.dataset.armed = "1";
-      btn.classList.add("bg-bad/15");
+      btn.classList.add("bg-recessed");
       btn.innerHTML = '<i class="ph ph-check text-sm"></i> Delete?';
       setTimeout(() => render(), 2500);
       return;
@@ -540,8 +606,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.c
 function paintStateSeg() {
   document.querySelectorAll(".stateSeg").forEach((b) => {
     const on = b.dataset.state === formState;
-    b.className = "stateSeg h-8 px-4 rounded-md text-sm font-medium focus-ring transition-colors cursor-pointer " +
-      (on ? "bg-ink text-surface shadow-sm" : "text-faint hover:text-ink");
+    b.className = "stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors cursor-pointer " +
+      (on ? "bg-raised bd text-ink" : "text-secondary hover:text-ink");
   });
 }
 document.querySelectorAll(".stateSeg").forEach((b) =>
@@ -559,10 +625,10 @@ function variantRow(name, value) {
   const v = typeof value === "string" ? value : JSON.stringify(value);
   div.innerHTML = `
     <input data-v name spellcheck="false" value="${esc(name)}" placeholder="variant"
-      class="flex-1 h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
+      class="input input-sm flex-1 font-mono px-2.5" />
     <input data-val val spellcheck="false" value="${esc(v)}" placeholder="value (JSON)"
-      class="flex-[1.4] h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
-    <button type="button" data-rm class="h-9 w-9 shrink-0 grid place-items-center rounded-lg text-faint hover:bg-bad/10 hover:text-bad transition-colors focus-ring" aria-label="Remove variant"><i class="ph ph-minus text-base"></i></button>`;
+      class="input input-sm flex-[1.4] font-mono px-2.5" />
+    <button type="button" data-rm class="btn-ghost h-9 w-9 shrink-0 focus-ring hover:text-red" aria-label="Remove variant"><i class="ph ph-minus text-base"></i></button>`;
   div.querySelector("[data-rm]").addEventListener("click", () => {
     div.remove(); paintDefaultSelect();
   });
@@ -645,12 +711,12 @@ $("flagForm").addEventListener("submit", async (e) => {
   }
 });
 
-/* ---------- toasts ---------- */
+/* ---------- toasts (dot + text, achromatic) ---------- */
 function toast(msg, tone = "good") {
-  const toneClass = tone === "good" ? "border-line" : "border-bad/40";
   const el = document.createElement("div");
-  el.className = "toast-in pointer-events-auto flex items-center gap-2.5 rounded-lg border bg-raised shadow-pop px-3.5 py-2.5 text-sm " + toneClass;
-  el.innerHTML = `<i class="ph ${tone === "good" ? "ph-check-circle text-good" : "ph-warning-circle text-bad"} text-base"></i>${esc(msg)}`;
+  el.className = "toast-in pointer-events-auto flex items-center gap-2.5 rounded-lg bd-menu px-3.5 py-2.5 text-[13px]";
+  el.style.background = "var(--raised)";
+  el.innerHTML = `<span class="size-2.5 rounded-full ${tone === "good" ? "bg-green" : "bg-red"}"></span>${esc(msg)}`;
   $("toasts").appendChild(el);
   setTimeout(() => el.remove(), 3200);
 }
@@ -665,11 +731,11 @@ const scheduleRefresh = () => {
 
 const evt = new EventSource("/events");
 evt.onopen = () => {
-  const d = $("liveDot"); d.className = "h-2 w-2 rounded-full bg-good live-dot";
+  $("liveDot").className = "size-2.5 rounded-full bg-green live-dot";
   $("liveText").textContent = "live";
 };
 evt.onerror = () => {
-  const d = $("liveDot"); d.className = "h-2 w-2 rounded-full bg-warn";
+  $("liveDot").className = "size-2.5 rounded-full bg-amber";
   $("liveText").textContent = "reconnecting";
 };
 evt.onmessage = (msg) => {
