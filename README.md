@@ -2,6 +2,10 @@
 
 **Postgres-native feature flags, live-synced to flagd — no polling.**
 
+[![CI](https://github.com/codetesla51/flick/actions/workflows/ci.yml/badge.svg)](https://github.com/codetesla51/flick/actions/workflows/ci.yml)
+[![Go version](https://img.shields.io/github/go-mod/go-version/codetesla51/flick)](https://go.dev)
+[![Release](https://img.shields.io/github/v/release/codetesla51/flick)](https://github.com/codetesla51/flick/releases)
+
 flick stores feature flags in Postgres and streams every change to [flagd](https://flagd.dev) over its native gRPC sync protocol. Change a flag from your terminal or SQL and flagd clients see it within milliseconds — with **transactional guarantees** most flag systems don't have: the flag update and its change event commit atomically, so no change is ever lost or half-applied.
 
 Your app never talks to flick. It talks to flagd, which evaluates from its own in-memory copy — sub-millisecond reads, no per-request database hits. flick is the *source*; flagd is the *evaluator*.
@@ -14,7 +18,7 @@ Your app never talks to flick. It talks to flagd, which evaluates from its own i
 - **No polling anywhere.** Changes are pushed end-to-end via a **transactional outbox** + **logical replication (CDC)**. Write a flag and an outbox event in one transaction; a WAL consumer streams the event to connected flagd instances.
 - **No missed updates.** A subscribe-first streaming design guarantees a new client gets the full snapshot *and* any changes that land while the snapshot is being built — nothing slips through the gap.
 - **Survives restarts.** The replication slot resumes from its saved position and replays undelivered events (at-least-once), so changes made while flick is down still reach flagd when it comes back.
-- **Small and testable.** One modular library (`package flick`) + one CLI entrypoint, with `-race`-clean tests against a real Postgres.
+- **Small and testable.** One modular library (`package flick`) + one CLI entrypoint, `-race`-clean tests against a real Postgres, green CI.
 
 ---
 
@@ -67,6 +71,9 @@ Subscribe **before** the snapshot work: nothing between "started listening" and 
 
 ## Quick start
 
+> [!TIP]
+> Any Postgres with `wal_level = logical` works. The examples below use a docker container; `FLICK_DSN` or `--dsn` points flick at whatever Postgres you have.
+
 ### 1. Postgres with logical replication
 
 ```sh
@@ -81,11 +88,13 @@ docker restart flick-pg
 ### 2. Set up and run flick
 
 ```sh
-go run ./cmd/flick init      # migrations + wal_level check
-go run ./cmd/flick serve     # sync gRPC server on :8015
+go run ./cmd/flick init      # migrations + replication probe (proves streaming works)
+go run ./cmd/flick serve     # sync gRPC server on :8015, console on :8016
 ```
 
-DSN resolution: `--dsn` flag → `FLICK_DSN` env → `postgres://user:pass@localhost:5432/flick?sslmode=disable`.
+`flick init` doesn't just check settings — it runs a live end-to-end probe: it creates the `flick_slot` slot and `flick_pub` publication (the same ones serve uses), writes a probe row to the outbox table, and confirms the stream delivers it. If anything is broken (permissions, wal_level pending restart, another process holding the slot), it says exactly what and how to fix it.
+
+DSN resolution: `--dsn` flag → `FLICK_DSN` env → `postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable`.
 
 ### 3. Point flagd at it
 
@@ -112,8 +121,8 @@ flagd clients see each change within milliseconds — no restart, no reload.
 
 | Command | What it does |
 |---|---|
-| `flick init` | Apply migrations + verify `wal_level=logical` readiness |
-| `flick serve` | Run the flagd sync gRPC server (`--addr`, env `FLICK_SYNC_ADDR`, default `:8015`) |
+| `flick init` | Apply migrations, verify `wal_level=logical`, run a live replication probe (slot + publication + probe event delivered end-to-end) |
+| `flick serve` | Run the flagd sync gRPC server (`--addr`, env `FLICK_SYNC_ADDR`, default `:8015`) + console (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) |
 | `flick set <key>` | Create/update a flag: `--state` (default `ENABLED`), `--default-variant`, `--variants`, `--targeting`, `--metadata` (JSON) |
 | `flick get <key>` | Show one flag's full detail |
 | `flick list` | Table of all flags + pending outbox count |
@@ -121,6 +130,20 @@ flagd clients see each change within milliseconds — no restart, no reload.
 | `flick version` | Print version (settable via `-ldflags "-X main.version=..."`) |
 
 All database commands accept the global `--dsn`.
+
+## Console & live metrics
+
+`flick serve` runs a web console at `:8016` — a full flag CRUD UI with light/dark themes and live SSE updates (any change from any client re-renders instantly). The UI is a hand-rolled "database instrument" design: a **live stream strip** under the header ticks every outbox event as it flows (`#320 flags · checkout-v2 DISABLED`), metric cells show delivered/change counters in real time, and flags render as a clean ledger list with one-tap state switches.
+
+- `/` — the console (single embedded HTML page, zero build step)
+- `/api/flags` — GET list · POST create/update · DELETE `/api/flags/{key}`
+- `/metrics/stream` — SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
+- `/events` — SSE: every decoded WAL change, live
+
+```sh
+open http://localhost:8016          # the console
+curl -sN localhost:8016/metrics/stream
+```
 
 ## Using it from your app (any language)
 
@@ -142,20 +165,6 @@ enabled, err := client.BooleanValue(
 )
 ```
 
-## Console & live metrics
-
-`flick serve` runs a web console (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) with a full flag CRUD UI — create, edit, toggle, delete — light and dark themes, live SSE updates (any change from any client re-renders instantly).
-
-- `/` — the console (single embedded HTML page)
-- `/api/flags` — GET list · POST create/update · DELETE `/api/flags/{key}`
-- `/metrics/stream` — SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
-- `/events` — SSE: every decoded WAL change, live
-
-```sh
-open http://localhost:8016          # the console
-curl -sN localhost:8016/metrics/stream
-```
-
 ## Serve / sync guarantees
 
 - **One contract:** every flag change goes through the outbox pair (`SetFlag` / `DeleteFlag` / `flick set`). Bare `UPDATE flags` SQL is visible only after a client reconnects.
@@ -163,16 +172,25 @@ curl -sN localhost:8016/metrics/stream
 - **Ordered per topic:** outbox events within a topic are delivered strictly in order, so a rapid on/off toggle always converges on the *final* value, never a stale intermediate.
 - **Self-healing:** drop-on-full deltas resolve on reconnect; hard server crashes trigger flagd's own retry + resync.
 
+## CI / releases
+
+- **CI** ([ci.yml](.github/workflows/ci.yml)) runs on every push to `main` and every PR: `gofmt` check → `go vet` → `go test -race -count=1 ./...`, backed by a postgres:16 service container so the E2E tests run against a real database.
+- **Releases** ([release.yml](.github/workflows/release.yml)): push a version tag and the pipeline tests, builds the CLI for **linux / darwin / windows × amd64 / arm64** (tag baked into `flick version`), and publishes a single GitHub Release with all binaries + `CHECKSUMS.txt` + auto-generated notes.
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
 ## Scope
 
-**In scope:** Postgres-backed flag storage with transactional eventing, live gRPC sync to flagd, CLI management, delete support, e2e-tested against a real database.
+**In scope:** Postgres-backed flag storage with transactional eventing, live gRPC sync to flagd, CLI management, a full web console with live metrics, delete support, an end-to-end init probe, and e2e-tested against a real database.
 
-**Out of scope (deliberately):** flag *evaluation* (that's flagd's job), targeting rule authoring, auth/multi-tenancy, a web console, and dead-lettering of dropped deltas. The delivery handler currently logs and fans out; the wire format is flagd's full-config-per-message semantics (not minimal diffs).
+**Out of scope (deliberately):** flag *evaluation* (that's flagd's job), targeting rule authoring, auth/multi-tenancy, and dead-lettering of dropped deltas. The delivery handler fans out to the Hub and logs; the wire format is flagd's full-config-per-message semantics (not minimal diffs).
 
 ## Layout
 
 ```
-cmd/flick/          CLI: init, serve, set, get, list, delete, version
+cmd/flick/          CLI: init, serve, set, get, list, delete, version (+ dashboard.html)
 flags.go            SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders
 outbox.go           phylax wiring; delivery handler → Hub
 hub.go              pub/sub: Subscribe / Unsubscribe / Publish (drop-on-full)
@@ -185,8 +203,8 @@ gen/flagd/sync/v1/  generated flagd.sync.v1 Go bindings
 ## Development
 
 ```sh
-go test -race ./...     # unit + e2e (needs the Postgres from quick start)
+go test -race ./...     # unit + e2e — self-migrates, needs any reachable Postgres
 go vet ./...
 ```
 
-Verified end-to-end against real flagd v0.15 and the OpenFeature Go SDK: live updates, 100-toggle ordering convergence, and kill/restart reconnect with WAL replay.
+Tests self-apply the embedded migrations in `TestMain`, so they work against any Postgres (set `FLICK_DSN` if yours isn't the default). The same suite runs in CI on every push.
