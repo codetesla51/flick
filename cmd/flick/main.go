@@ -23,7 +23,7 @@ consumer (phylax) streams those events to connected flagd instances over
 gRPC (flagd.sync.v1.FlagSyncService) — push, no polling.
 
 Commands:
-  flick init     set up the database (migrations + replication check)
+  flick init     set up the database (migrations + replication probe)
   flick serve    run the flagd sync gRPC server
   flick set      create or update a flag
   flick get      show a single flag
@@ -63,5 +63,5 @@ func resolveDSN() string {
 	if v := os.Getenv("FLICK_DSN"); v != "" {
 		return v
 	}
-	return "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+	return "postgres://us:2@localhost:5432/flick?sslmode=disable"
 }
