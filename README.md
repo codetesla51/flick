@@ -18,7 +18,7 @@ Your app never talks to flick. It talks to flagd, which evaluates from its own i
 - **No polling anywhere.** Changes are pushed end-to-end via a **transactional outbox** + **logical replication (CDC)**. Write a flag and an outbox event in one transaction; a WAL consumer streams the event to connected flagd instances.
 - **No missed updates.** A subscribe-first streaming design guarantees a new client gets the full snapshot *and* any changes that land while the snapshot is being built — nothing slips through the gap.
 - **Survives restarts.** The replication slot resumes from its saved position and replays undelivered events (at-least-once), so changes made while flick is down still reach flagd when it comes back.
-- **Small and testable.** One modular library (`package flick`) + one CLI entrypoint, `-race`-clean tests against a real Postgres, green CI.
+- **Small and testable.** One modular library (`package flick`) + one CLI entrypoint, with `-race`-clean tests against a real Postgres.
 
 ---
 
@@ -67,6 +67,15 @@ sequenceDiagram
 
 Subscribe **before** the snapshot work: nothing between "started listening" and "snapshot sent" is lost. The Hub uses buffered, drop-on-full channels — a slow subscriber can never stall the WAL consumer; a dropped delta self-heals on reconnect with a fresh snapshot.
 
+## Install
+
+```sh
+go install github.com/codetesla51/flick/cmd/flick@latest
+```
+
+> [!NOTE]
+> `@latest` resolves to the newest tagged release. Until the first tag exists, build from a checkout instead: `go run ./cmd/flick` (or `go build -o flick ./cmd/flick`).
+
 ---
 
 ## Quick start
@@ -88,8 +97,8 @@ docker restart flick-pg
 ### 2. Set up and run flick
 
 ```sh
-go run ./cmd/flick init      # migrations + replication probe (proves streaming works)
-go run ./cmd/flick serve     # sync gRPC server on :8015, console on :8016
+flick init      # migrations + replication probe (proves streaming works)
+flick serve     # sync gRPC server on :8015, console on :8016
 ```
 
 `flick init` doesn't just check settings — it runs a live end-to-end probe: it creates the `flick_slot` slot and `flick_pub` publication (the same ones serve uses), writes a probe row to the outbox table, and confirms the stream delivers it. If anything is broken (permissions, wal_level pending restart, another process holding the slot), it says exactly what and how to fix it.
@@ -172,15 +181,6 @@ enabled, err := client.BooleanValue(
 - **Ordered per topic:** outbox events within a topic are delivered strictly in order, so a rapid on/off toggle always converges on the *final* value, never a stale intermediate.
 - **Self-healing:** drop-on-full deltas resolve on reconnect; hard server crashes trigger flagd's own retry + resync.
 
-## CI / releases
-
-- **CI** ([ci.yml](.github/workflows/ci.yml)) runs on every push to `main` and every PR: `gofmt` check → `go vet` → `go test -race -count=1 ./...`, backed by a postgres:16 service container so the E2E tests run against a real database.
-- **Releases** ([release.yml](.github/workflows/release.yml)): push a version tag and the pipeline tests, builds the CLI for **linux / darwin / windows × amd64 / arm64** (tag baked into `flick version`), and publishes a single GitHub Release with all binaries + `CHECKSUMS.txt` + auto-generated notes.
-
-```sh
-git tag v0.1.0 && git push origin v0.1.0
-```
-
 ## Scope
 
 **In scope:** Postgres-backed flag storage with transactional eventing, live gRPC sync to flagd, CLI management, a full web console with live metrics, delete support, an end-to-end init probe, and e2e-tested against a real database.
@@ -207,4 +207,4 @@ go test -race ./...     # unit + e2e — self-migrates, needs any reachable Post
 go vet ./...
 ```
 
-Tests self-apply the embedded migrations in `TestMain`, so they work against any Postgres (set `FLICK_DSN` if yours isn't the default). The same suite runs in CI on every push.
+Tests self-apply the embedded migrations in `TestMain`, so they work against any Postgres (set `FLICK_DSN` if yours isn't the default).
