@@ -208,6 +208,17 @@
   .lcell { font-size: 12px; color: var(--secondary); display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .lcell-muted { color: var(--muted); }
   @media (min-width: 768px) { .lcell { display: block; } }
+  .vwrap { position: relative; display: inline-flex; align-items: center; max-width: 100%; }
+  .vwrap select {
+    appearance: none; -webkit-appearance: none;
+    height: 28px; max-width: 100%; padding: 0 24px 0 9px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--recessed);
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; color: var(--ink);
+    cursor: pointer; transition: border-color .12s ease, background-color .12s ease;
+  }
+  .vwrap select:hover { border-color: var(--accent); }
+  .vwrap select:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
+  .vcaret { position: absolute; right: 8px; pointer-events: none; color: var(--muted); font-size: 11px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
     background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
@@ -589,6 +600,18 @@ const switchHTML = (f, label) => `
 function rowHTML(f) {
   const targeting = hasTargeting(f.targeting);
   const on = f.state === "ENABLED";
+  const vnames = Object.keys(obj(f.variants));
+  // Boolean on/off flags are toggled via the state switch; everything else
+  // gets a quick default-variant switcher in the Default column.
+  const isBool = vnames.length === 2 && vnames.includes("on") && vnames.includes("off");
+  const defCell = !isBool && vnames.length > 1
+    ? `<span class="lcell vwrap">
+        <select data-act="variant" aria-label="Default variant for ${esc(f.key)}">
+          ${vnames.map((n) => `<option value="${esc(n)}" ${n === f.defaultVariant ? "selected" : ""}>${esc(n)}</option>`).join("")}
+        </select>
+        <i class="ph ph-caret-down vcaret"></i>
+      </span>`
+    : `<span class="lcell">${esc(f.defaultVariant)}</span>`;
   return `
   <div data-key="${esc(f.key)}" class="lrow">
     <div class="lfirst">
@@ -598,7 +621,7 @@ function rowHTML(f) {
         <span class="lsub">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</span>
       </div>
     </div>
-    <span class="lcell">${esc(f.defaultVariant)}</span>
+    ${defCell}
     <span class="lcell lcell-muted">${variantCount(f.variants)}</span>
     <span class="lcell">${targeting ? `<span class="chip">targeted</span>` : '<span class="lcell-muted">—</span>'}</span>
     <span class="lcell lcell-muted">${fmtTime(f.updatedAt)}</span>
@@ -672,6 +695,34 @@ pagerEl.addEventListener("click", (e) => {
   render();
 });
 searchEl.addEventListener("input", () => { page = 1; render(); });
+
+/* ---------- quick variant switch (change default variant in place) ---------- */
+listEl.addEventListener("change", async (e) => {
+  const sel = e.target.closest("select[data-act='variant']");
+  if (!sel) return;
+  const row = sel.closest("[data-key]");
+  const key = row ? row.dataset.key : null;
+  if (!key) return;
+  const f = flags.find((x) => x.key === key);
+  if (!f) return;
+  const next = sel.value;
+  if (next === f.defaultVariant) return;
+  const old = f.defaultVariant;
+  // optimistic
+  f.defaultVariant = next;
+  render();
+  toast("Default of " + key + " → " + next);
+  try {
+    await api("/api/flags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, state: f.state, defaultVariant: next, variants: obj(f.variants), targeting: obj(f.targeting), metadata: obj(f.metadata) }),
+    });
+  } catch (err) {
+    f.defaultVariant = old; render();
+    toast("Variant switch failed: " + err.message, "bad");
+  }
+});
 
 /* ---------- actions ---------- */
 let pendingDelete = null;
