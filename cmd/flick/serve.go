@@ -94,13 +94,14 @@ func runServe(dsn, addr, metrics string) error {
 		}
 	}
 	phylaxSrv := outbox.Server()
+	dashSrv := &http.Server{Addr: metrics, Handler: newDashboardMux(pool, phylaxSrv)}
 	go func() {
-		log.Printf("metrics/events/console on %s (/metrics/stream, /events, /dashboard)", metrics)
-		if err := phylaxSrv.ListenAndServe(metrics); err != nil && err != http.ErrServerClosed {
-			log.Printf("metrics server: %v", err)
+		log.Printf("console on %s (dashboard, /api/flags, /events, /metrics/stream)", metrics)
+		if err := dashSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("console server: %v", err)
 		}
 	}()
-	defer phylaxSrv.Shutdown(context.Background())
+	defer dashSrv.Shutdown(context.Background())
 
 	if addr == "" {
 		addr = os.Getenv("FLICK_SYNC_ADDR")

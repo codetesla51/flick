@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>flick · flag console</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+      colors: {
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        raised:  'rgb(var(--raised) / <alpha-value>)',
+        line:    'rgb(var(--line) / <alpha-value>)',
+        ink:     'rgb(var(--ink) / <alpha-value>)',
+        faint:   'rgb(var(--faint) / <alpha-value>)',
+        accent:  'rgb(var(--accent) / <alpha-value>)',
+        good:    'rgb(var(--good) / <alpha-value>)',
+        bad:     'rgb(var(--bad) / <alpha-value>)',
+        warn:    'rgb(var(--warn) / <alpha-value>)',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgb(0 0 0 / 0.04), 0 4px 12px rgb(0 0 0 / 0.03)',
+        pop:  '0 12px 40px rgb(0 0 0 / 0.16)',
+      },
+    },
+  },
+};
+</script>
+<style>
+  :root {
+    --surface: 248 247 243;   /* warm off-white */
+    --raised:  253 252 249;   /* cards */
+    --line:    228 226 219;
+    --ink:     28 26 23;      /* off-black */
+    --faint:   110 108 101;   /* muted text */
+    --accent:  92 90 214;     /* muted indigo */
+    --good:    34 142 84;
+    --bad:     197 60 52;
+    --warn:    176 121 18;
+  }
+  .dark {
+    --surface: 20 20 22;      /* off-black */
+    --raised:  26 26 29;
+    --line:    45 45 49;
+    --ink:     236 235 231;   /* off-white text */
+    --faint:   156 155 147;
+    --accent:  141 138 247;
+    --good:    96 199 143;
+    --bad:     229 107 96;
+    --warn:    226 174 84;
+  }
+  html { -webkit-font-smoothing: antialiased; }
+  body { font-feature-settings: 'cv11'; }
+  ::selection { background: rgb(var(--accent) / 0.25); }
+  .focus-ring:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+  @keyframes pulse-live { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .live-dot { animation: pulse-live 2.4s ease-in-out infinite; }
+  @keyframes slide-in { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+  .toast-in { animation: slide-in .18s ease-out; }
+  @keyframes pop-in { from { opacity: 0; transform: scale(.97) translateY(6px) } to { opacity: 1; transform: none } }
+  .modal-in { animation: pop-in .2s cubic-bezier(.16,1,.3,1); }
+</style>
+</head>
+<body class="bg-surface text-ink font-sans min-h-screen">
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2.5 focus-ring">
+      <span class="h-8 w-8 rounded-lg bg-ink text-surface grid place-items-center">
+        <i class="ph ph-faders text-base"></i>
+      </span>
+      <span class="text-[15px] font-semibold tracking-tight">flick</span>
+      <span class="hidden sm:inline text-xs text-faint font-medium">flag console</span>
+    </a>
+
+    <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+      <div id="liveBadge" class="hidden sm:flex items-center gap-2 rounded-full border border-line px-3 h-8 text-xs text-faint" title="Live updates">
+        <span id="liveDot" class="h-2 w-2 rounded-full bg-good live-dot"></span>
+        <span id="liveText">connecting…</span>
+      </div>
+      <button id="themeBtn" class="h-9 w-9 grid place-items-center rounded-lg border border-line text-faint hover:text-ink hover:border-ink/20 transition-colors focus-ring" aria-label="Toggle theme">
+        <i id="themeIcon" class="ph ph-moon text-lg"></i>
+      </button>
+      <button id="newBtn" class="flex items-center gap-2 h-9 rounded-lg bg-ink text-surface px-3.5 text-sm font-medium hover:opacity-90 active:scale-[.98] transition-all focus-ring">
+        <i class="ph ph-plus text-base"></i><span class="hidden xs:inline sm:inline">New flag</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-6xl px-4 sm:px-6 pb-24 pt-5">
+
+  <!-- ============ METRICS STRIP ============ -->
+  <section aria-label="Live metrics" class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
+      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
+        Flags <i class="ph ph-flag text-sm"></i>
+      </div>
+      <div class="font-mono text-2xl font-semibold tabular-nums" id="mFlags">–</div>
+    </div>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
+      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
+        Delivered <i class="ph ph-paper-plane-tilt text-sm"></i>
+      </div>
+      <div class="font-mono text-2xl font-semibold tabular-nums" id="mDelivered">–</div>
+    </div>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
+      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
+        WAL lag <i class="ph ph-gauge text-sm"></i>
+      </div>
+      <div class="font-mono text-2xl font-semibold tabular-nums" id="mLag">–</div>
+    </div>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
+      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
+        Changes <i class="ph ph-lightning text-sm"></i>
+      </div>
+      <div class="font-mono text-2xl font-semibold tabular-nums" id="mChanges">–</div>
+    </div>
+  </section>
+
+  <!-- ============ FLAGS LIST ============ -->
+  <section>
+    <div class="flex items-center gap-3 mb-3">
+      <h1 class="text-base font-semibold tracking-tight">Flags</h1>
+      <span id="flagCount" class="text-xs text-faint font-medium font-mono"></span>
+      <div class="relative ml-auto w-full max-w-[220px]">
+        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-sm text-faint pointer-events-none"></i>
+        <input id="search" type="search" placeholder="Search flags…" autocomplete="off"
+          class="w-full h-9 rounded-lg border border-line bg-raised pl-9 pr-3 text-sm placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/60 transition-shadow" />
+      </div>
+    </div>
+
+    <div id="listHeader" class="hidden md:grid grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] gap-3 px-4 pb-2 text-[11px] uppercase tracking-wider text-faint font-medium">
+      <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
+    </div>
+    <div id="flags" class="flex flex-col gap-2"></div>
+
+    <div id="empty" class="hidden rounded-xl border border-dashed border-line px-6 py-16 text-center">
+      <i class="ph ph-flag text-4xl text-faint/60"></i>
+      <p class="mt-4 text-sm font-medium">No flags yet</p>
+      <p class="mt-1 text-sm text-faint max-w-sm mx-auto">Create your first flag and it syncs to every connected flagd client within milliseconds — try it live.</p>
+      <button id="emptyNew" class="mt-5 inline-flex items-center gap-2 h-9 rounded-lg bg-ink text-surface px-4 text-sm font-medium hover:opacity-90 focus-ring">
+        <i class="ph ph-plus text-base"></i> Create your first flag
+      </button>
+    </div>
+  </section>
+
+  <!-- last event line -->
+  <footer class="mt-8 text-xs text-faint flex items-center gap-2">
+    <i class="ph ph-activity text-sm"></i>
+    <span id="lastEvent">last event: —</span>
+  </footer>
+</main>
+
+<!-- ============ FLAG MODAL ============ -->
+<div id="modalBackdrop" class="fixed inset-0 z-40 hidden">
+  <div class="absolute inset-0 bg-black/30 dark:bg-black/55" id="modalScrim"></div>
+  <div class="absolute inset-x-0 bottom-0 md:inset-0 md:grid md:place-items-center p-0 md:p-6 overflow-y-auto">
+    <div id="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
+      class="modal-in w-full md:max-w-lg rounded-t-2xl md:rounded-2xl border border-line bg-raised shadow-pop">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-line">
+        <h2 id="modalTitle" class="text-sm font-semibold tracking-tight">New flag</h2>
+        <button id="modalClose" class="h-9 w-9 grid place-items-center rounded-lg text-faint hover:text-ink hover:bg-line/40 transition-colors focus-ring" aria-label="Close">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <form id="flagForm" class="px-5 py-4 space-y-4" novalidate>
+        <div>
+          <label for="fKey" class="block text-[12px] font-medium text-faint mb-1.5">Key</label>
+          <input id="fKey" required class="w-full h-9 rounded-lg border border-line bg-surface px-3 font-mono text-sm placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent/50" placeholder="show-banner" autocomplete="off" />
+          <p id="fKeyErr" class="hidden mt-1.5 text-xs text-bad"></p>
+        </div>
+
+        <div>
+          <span class="block text-[12px] font-medium text-faint mb-1.5">State</span>
+          <div class="grid grid-cols-2 gap-1.5 p-1 rounded-lg border border-line bg-surface w-fit">
+            <button type="button" data-state="ENABLED" class="stateSeg h-8 px-4 rounded-md text-sm font-medium text-faint hover:text-ink focus-ring">Enabled</button>
+            <button type="button" data-state="DISABLED" class="stateSeg h-8 px-4 rounded-md text-sm font-medium text-faint hover:text-ink focus-ring">Disabled</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[12px] font-medium text-faint">Variants</span>
+            <button type="button" id="addVariant" class="text-xs font-medium text-accent hover:underline focus-ring flex items-center gap-1">
+              <i class="ph ph-plus text-sm"></i> Add variant
+            </button>
+          </div>
+          <div id="variantRows" class="space-y-2"></div>
+          <p id="fVariantsErr" class="hidden mt-1.5 text-xs text-bad"></p>
+        </div>
+
+        <div>
+          <label for="fDefault" class="block text-[12px] font-medium text-faint mb-1.5">Default variant</label>
+          <select id="fDefault" class="w-full h-9 rounded-lg border border-line bg-surface px-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"></select>
+        </div>
+
+        <details class="group">
+          <summary class="cursor-pointer text-[12px] font-medium text-faint hover:text-ink focus-ring select-none">Targeting &amp; metadata</summary>
+          <div class="mt-3 space-y-3">
+            <div>
+              <label for="fTargeting" class="block text-[11px] font-medium text-faint mb-1">targeting <span class="font-normal">(JSON)</span></label>
+              <textarea id="fTargeting" rows="3" spellcheck="false" class="w-full rounded-lg border border-line bg-surface p-2.5 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent/50">{"country":["NG"]}</textarea>
+            </div>
+            <div>
+              <label for="fMetadata" class="block text-[11px] font-medium text-faint mb-1">metadata <span class="font-normal">(JSON)</span></label>
+              <textarea id="fMetadata" rows="2" spellcheck="false" class="w-full rounded-lg border border-line bg-surface p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent/50">{"owner":"platform"}</textarea>
+            </div>
+          </div>
+        </details>
+
+        <p id="fFormErr" class="hidden text-xs text-bad"></p>
+
+        <div class="flex items-center justify-end gap-2 pt-1 border-t border-line">
+          <button type="button" id="modalCancel" class="h-9 px-4 rounded-lg text-sm font-medium text-faint hover:text-ink hover:bg-line/40 focus-ring">Cancel</button>
+          <button type="submit" class="h-9 px-4 rounded-lg bg-ink text-surface text-sm font-medium hover:opacity-90 active:scale-[.98] transition-all focus-ring">
+            Save flag
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOASTS ============ -->
+<div id="toasts" class="fixed top-16 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<script>
+"use strict";
+
+/* ---------- theme ---------- */
+const stored = localStorage.getItem("flick-theme");
+const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+const setTheme = (dark) => {
+  document.documentElement.classList.toggle("dark", dark);
+  document.getElementById("themeIcon").className = "ph text-lg " + (dark ? "ph-sun" : "ph-moon");
+  localStorage.setItem("flick-theme", dark ? "dark" : "light");
+};
+setTheme(stored ? stored === "dark" : prefersDark);
+document.getElementById("themeBtn").addEventListener("click", () =>
+  setTheme(!document.documentElement.classList.contains("dark")));
+
+/* ---------- state ---------- */
+let flags = [];
+let lastEvent = null;
+
+const $ = (id) => document.getElementById(id);
+const listEl = $("flags"), emptyEl = $("empty"), searchEl = $("search");
+
+/* ---------- api ---------- */
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  let data = {};
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(data.error || "request failed (" + res.status + ")");
+  return data;
+}
+const refreshFlags = async () => {
+  try {
+    const data = await api("/api/flags");
+    flags = data.flags || [];
+    render();
+  } catch (err) { toast("Failed to load flags: " + err.message, "bad"); }
+};
+
+/* ---------- render ---------- */
+function variantCount(v) {
+  let n = 0; try { n = Object.keys(JSON.parse(v)).length; } catch (_) {}
+  return n;
+}
+function hasTargeting(t) {
+  try { return Object.keys(JSON.parse(t)).length > 0; } catch (_) { return false; }
+}
+function fmtTime(t) {
+  const d = new Date(t);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return Math.floor(diff / 60000) + "m ago";
+  if (diff < 86_400_000) return Math.floor(diff / 3600000) + "h ago";
+  return d.toLocaleDateString();
+}
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function rowHTML(f) {
+  const targeting = hasTargeting(f.targeting);
+  const delBtn = "Del-" + f.key;
+  return `
+  <div data-key="${esc(f.key)}" class="group rounded-xl border border-line bg-raised shadow-card hover:border-ink/20 transition-colors"
+       style="margin:0">
+    <div class="px-4 py-3 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="shrink-0 h-8 w-8 rounded-lg grid place-items-center ${f.state === "ENABLED" ? "bg-good/10 text-good" : "bg-line/50 text-faint"}">
+          <i class="ph ${f.state === "ENABLED" ? "ph-check" : "ph-pause"} text-base"></i>
+        </span>
+        <div class="min-w-0">
+          <p class="font-mono text-sm font-semibold truncate">${esc(f.key)}</p>
+          <p class="text-[11px] text-faint md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
+        </div>
+        <div class="ml-auto flex items-center gap-1 md:hidden">
+          <span class="text-[10px] px-2 py-1 rounded-full font-medium ${f.state === "ENABLED" ? "bg-good/10 text-good" : "bg-line/50 text-faint"}">${f.state}</span>
+        </div>
+      </div>
+
+      <span class="hidden md:block truncate font-mono text-xs text-ink/80">${esc(f.defaultVariant)}</span>
+      <span class="hidden md:block font-mono text-xs text-faint">${variantCount(f.variants)}</span>
+      <span class="hidden md:block">
+        ${targeting ? `<span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium"><i class="ph ph-target text-xs"></i> targeted</span>` : '<span class="text-xs text-faint/70">—</span>'}
+      </span>
+      <span class="hidden md:block text-xs text-faint">${fmtTime(f.updatedAt)}</span>
+
+      <div class="hidden md:flex justify-end">
+        <button data-act="toggle" class="h-8 min-w-[76px] px-2 rounded-full text-xs font-semibold transition-colors focus-ring cursor-pointer
+          ${f.state === "ENABLED" ? "bg-good/15 text-good hover:bg-good/25" : "bg-line/50 text-faint hover:bg-line"}"
+          aria-label="Toggle ${esc(f.key)}">${f.state === "ENABLED" ? "Enabled" : "Disabled"}</button>
+      </div>
+
+      <div class="md:hidden flex items-center gap-2 mt-2">
+        <button data-act="toggle" class="flex-1 h-9 rounded-lg text-xs font-semibold transition-colors focus-ring
+          ${f.state === "ENABLED" ? "bg-good/15 text-good" : "bg-line/50 text-faint"}">${f.state === "ENABLED" ? "Enabled — tap to disable" : "Disabled — tap to enable"}</button>
+      </div>
+    </div>
+    <div class="md:hidden flex items-center gap-1.5 px-4 pb-3 -mt-1 ml-[44px]">
+      <button data-act="edit" class="h-8 px-2.5 rounded-lg text-xs font-medium text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring flex items-center gap-1"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
+      <button data-act="delete" class="h-8 px-2.5 rounded-lg text-xs font-medium text-bad/80 hover:bg-bad/10 transition-colors focus-ring flex items-center gap-1"><i class="ph ph-trash text-sm"></i> Delete</button>
+    </div>
+    <div class="hidden md:flex items-center gap-0.5 px-4 pb-3 justify-end">
+      <button data-act="edit" class="h-8 w-8 grid place-items-center rounded-lg text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
+      <span class="relative">
+        <button data-act="delete" class="h-8 w-8 grid place-items-center rounded-lg text-faint hover:bg-bad/10 hover:text-bad transition-colors focus-ring" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash text-sm"></i></button>
+        <span data-confirm class="hidden absolute right-0 top-9 z-10 flex rounded-lg border border-line bg-raised shadow-pop p-1.5">
+          <button data-act="confirmDelete" class="h-8 px-3 rounded-md text-xs font-semibold bg-bad text-white hover:opacity-90 focus-ring">Delete</button>
+          <button data-act="cancelDelete" class="h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-line/50 focus-ring" aria-label="Cancel"><i class="ph ph-x text-sm"></i></button>
+        </span>
+      </span>
+    </div>
+  </div>`;
+}
+
+function render() {
+  emptyEl.classList.toggle("hidden", flags.length > 0);
+  $("flagCount").textContent = flags.length ? flags.length + " total" : "";
+  const q = searchEl.value.trim().toLowerCase();
+  const filtered = q ? flags.filter((f) => f.key.toLowerCase().includes(q)) : flags;
+  listEl.innerHTML = filtered.map(rowHTML).join("") ||
+    `<div class="rounded-xl border border-dashed border-line px-6 py-10 text-center text-sm text-faint">No flags match “${esc(q)}”</div>`;
+  listEl.classList.toggle("hidden", flags.length === 0);
+}
+
+/* ---------- actions ---------- */
+let pendingDelete = null;
+listEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const row = btn.closest("[data-key]");
+  const key = row.dataset.key;
+  const act = btn.dataset.act;
+
+  if (act === "toggle") return doToggle(row, key);
+  if (act === "edit") return openModal(key);
+  if (act === "delete") {
+    if (pendingDelete) pendingDelete.querySelector("[data-confirm]").classList.add("hidden");
+    pendingDelete = row;
+    row.querySelector("[data-confirm]").classList.remove("hidden");
+  }
+  if (act === "confirmDelete") return doDelete(key);
+  if (act === "cancelDelete") {
+    row.querySelector("[data-confirm]").classList.add("hidden");
+    if (pendingDelete === row) pendingDelete = null;
+  }
+});
+
+async function doToggle(row, key) {
+  const f = flags.find((x) => x.key === key);
+  if (!f) return;
+  const next = f.state === "ENABLED" ? "DISABLED" : "ENABLED";
+  const old = f.state;
+  // optimistic
+  f.state = next;
+  render();
+  toast((next === "ENABLED" ? "Enabled " : "Disabled ") + key);
+  try {
+    await api("/api/flags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, state: next, defaultVariant: f.defaultVariant, variants: JSON.parse(f.variants), targeting: JSON.parse(f.targeting), metadata: JSON.parse(f.metadata) }),
+    });
+  } catch (err) {
+    f.state = old; render();
+    toast("Toggle failed: " + err.message, "bad");
+  }
+}
+
+async function doDelete(key) {
+  try {
+    await api("/api/flags/" + encodeURIComponent(key), { method: "DELETE" });
+    toast("Deleted " + key);
+    await refreshFlags();
+  } catch (err) { toast("Delete failed: " + err.message, "bad"); }
+}
+
+/* ---------- modal ---------- */
+const modal = $("modalBackdrop");
+let editingKey = null;
+let formState = "ENABLED";
+
+function openModal(key) {
+  editingKey = key || null;
+  $("modalTitle").textContent = key ? "Edit flag" : "New flag";
+  $("fKey").readOnly = !!key;
+  $("fKey").classList.toggle("opacity-60", !!key);
+  formState = "ENABLED";
+  if (key) {
+    const f = flags.find((x) => x.key === key);
+    formState = f.state;
+    $("fKey").value = f.key;
+    $("fTargeting").value = JSON.stringify(JSON.parse(f.targeting), null, 2);
+    $("fMetadata").value = JSON.stringify(JSON.parse(f.metadata), null, 2);
+    setVariantRows(Object.entries(JSON.parse(f.variants)));
+  } else {
+    $("fKey").value = "";
+    $("fTargeting").value = "{}";
+    $("fMetadata").value = "{\n  \"owner\": \"platform\"\n}";
+    setVariantRows([["on", true], ["off", false]]);
+  }
+  paintStateSeg();
+  hideErrors();
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  setTimeout(() => $("fKey").focus(), 30);
+}
+function closeModal() {
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+$("modalClose").addEventListener("click", closeModal);
+$("modalCancel").addEventListener("click", closeModal);
+$("modalScrim").addEventListener("click", closeModal);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal(); });
+
+function paintStateSeg() {
+  document.querySelectorAll(".stateSeg").forEach((b) => {
+    const on = b.dataset.state === formState;
+    b.className = "stateSeg h-8 px-4 rounded-md text-sm font-medium focus-ring transition-colors cursor-pointer " +
+      (on ? "bg-ink text-surface shadow-sm" : "text-faint hover:text-ink");
+  });
+}
+document.querySelectorAll(".stateSeg").forEach((b) =>
+  b.addEventListener("click", () => { formState = b.dataset.state; paintStateSeg(); }));
+
+function setVariantRows(pairs) {
+  const wrap = $("variantRows");
+  wrap.innerHTML = "";
+  for (const [k, v] of pairs) wrap.appendChild(variantRow(k, v));
+  paintDefaultSelect();
+}
+function variantRow(name, value) {
+  const div = document.createElement("div");
+  div.className = "flex gap-1.5";
+  const v = typeof value === "string" ? value : JSON.stringify(value);
+  div.innerHTML = `
+    <input data-v name spellcheck="false" value="${esc(name)}" placeholder="variant"
+      class="flex-1 h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
+    <input data-v val spellcheck="false" value="${esc(v)}" placeholder="value (JSON)"
+      class="flex-[1.4] h-9 rounded-lg border border-line bg-surface px-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent/50" />
+    <button type="button" data-rm class="h-9 w-9 shrink-0 grid place-items-center rounded-lg text-faint hover:bg-bad/10 hover:text-bad transition-colors focus-ring" aria-label="Remove variant"><i class="ph ph-minus text-base"></i></button>`;
+  div.querySelector("[data-rm]").addEventListener("click", () => {
+    div.remove(); paintDefaultSelect();
+  });
+  div.querySelectorAll("input").forEach((i) => i.addEventListener("input", paintDefaultSelect));
+  return div;
+}
+$("addVariant").addEventListener("click", () => {
+  $("variantRows").appendChild(variantRow("", ""));
+  $("variantRows").lastChild.querySelector("input[data-v]").focus();
+});
+
+function variantPairs() {
+  const out = [];
+  document.querySelectorAll("#variantRows > div").forEach((row) => {
+    const name = row.querySelector("[data-v]").value.trim();
+    const val = row.querySelector("[data-val]").value.trim();
+    if (name) out.push([name, val]);
+  });
+  return out;
+}
+function paintDefaultSelect() {
+  const sel = $("fDefault");
+  const prev = sel.value;
+  const names = variantPairs().map(([n]) => n);
+  sel.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  if (names.includes(prev)) sel.value = prev;
+}
+
+function hideErrors() {
+  ["fKeyErr", "fVariantsErr", "fFormErr"].forEach((id) => $(id).classList.add("hidden"));
+}
+function fieldErr(id, msg) {
+  const el = $(id); el.textContent = msg; el.classList.remove("hidden");
+}
+
+$("flagForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hideErrors();
+  const key = $("fKey").value.trim();
+  const pairs = variantPairs();
+  if (!key) return fieldErr("fKeyErr", "A key is required — e.g. show-banner");
+  if (!pairs.length) return fieldErr("fVariantsErr", "Add at least one variant.");
+
+  const variants = {};
+  for (const [name, raw] of pairs) {
+    let val;
+    try { val = raw === "" ? null : JSON.parse(raw); } catch (_) {
+      return fieldErr("fVariantsErr", `Value for “${name}” is not valid JSON.`);
+    }
+    variants[name] = val;
+  }
+  let targeting, metadata;
+  try { targeting = JSON.parse($("fTargeting").value || "{}"); } catch (_) {
+    return fieldErr("fFormErr", "targeting is not valid JSON.");
+  }
+  try { metadata = JSON.parse($("fMetadata").value || "{}"); } catch (_) {
+    return fieldErr("fFormErr", "metadata is not valid JSON.");
+  }
+  const defaultVariant = $("fDefault").value;
+  if (!defaultVariant || !(defaultVariant in variants))
+    return fieldErr("fVariantsErr", "Default variant must be one of the variants.");
+
+  const btn = e.submitter;
+  const label = btn.textContent;
+  btn.disabled = true; btn.classList.add("opacity-50");
+  try {
+    await api("/api/flags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, state: formState, defaultVariant, variants, targeting, metadata }),
+    });
+    toast((editingKey ? "Updated " : "Created ") + key);
+    closeModal();
+    await refreshFlags();
+  } catch (err) {
+    fieldErr("fFormErr", err.message);
+  } finally {
+    btn.disabled = false; btn.classList.remove("opacity-50");
+    if (label) btn.textContent = label;
+  }
+});
+
+/* ---------- toasts ---------- */
+function toast(msg, tone = "good") {
+  const toneClass = tone === "good" ? "border-line" : "border-bad/40";
+  const el = document.createElement("div");
+  el.className = "toast-in pointer-events-auto flex items-center gap-2.5 rounded-lg border bg-raised shadow-pop px-3.5 py-2.5 text-sm " + toneClass;
+  el.innerHTML = `<i class="ph ${tone === "good" ? "ph-check-circle text-good" : "ph-warning-circle text-bad"} text-base"></i>${esc(msg)}`;
+  $("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/* ---------- live ---------- */
+let refreshPending = false;
+const scheduleRefresh = () => {
+  if (refreshPending) return;
+  refreshPending = true;
+  setTimeout(() => { refreshPending = false; refreshFlags(); }, 150);
+};
+
+const evt = new EventSource("/events");
+evt.onopen = () => {
+  const d = $("liveDot"); d.className = "h-2 w-2 rounded-full bg-good live-dot";
+  $("liveText").textContent = "live";
+};
+evt.onerror = () => {
+  const d = $("liveDot"); d.className = "h-2 w-2 rounded-full bg-warn";
+  $("liveText").textContent = "reconnecting";
+};
+evt.onmessage = (msg) => {
+  try {
+    const c = JSON.parse(msg.data);
+    if (c.Table === "outbox" && c.Operation === "insert") {
+      const raw = c.NewRow && c.NewRow.payload;
+      let p = {};
+      if (raw) p = (typeof raw === "string") ? JSON.parse(raw) : raw;
+      if (p.key) {
+        $("lastEvent").textContent = `last event: ${c.Table} — ${p.key} ${p.deleted ? "(deleted)" : p.state || ""}`.trim();
+        scheduleRefresh();
+      }
+    }
+  } catch (_) {}
+};
+
+const mstream = new EventSource("/metrics/stream");
+mstream.onmessage = (msg) => {
+  try {
+    const m = JSON.parse(msg.data);
+    $("mDelivered").textContent = m.outbox_delivered;
+    $("mChanges").textContent = m.changes_processed;
+    $("mLag").textContent = m.replication_lag_bytes > 0 ? (m.replication_lag_bytes / 1024).toFixed(1) + " KB" : "0 B";
+  } catch (_) {}
+};
+
+$("newBtn").addEventListener("click", () => openModal(null));
+$("emptyNew").addEventListener("click", () => openModal(null));
+
+refreshFlags();
+fetch("/api/flags").then((r) => r.json()).then((d) => { $("mFlags").textContent = (d.flags || []).length; }).catch(() => {});
+</script>
+</body>
+</html>

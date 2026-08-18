@@ -142,16 +142,18 @@ enabled, err := client.BooleanValue(
 )
 ```
 
-## Live metrics & console
+## Console & live metrics
 
-`flick serve` also runs an HTTP server (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) with:
+`flick serve` runs a web console (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) with a full flag CRUD UI — create, edit, toggle, delete — light and dark themes, live SSE updates (any change from any client re-renders instantly).
 
-- `/metrics/stream` — SSE: an in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
+- `/` — the console (single embedded HTML page)
+- `/api/flags` — GET list · POST create/update · DELETE `/api/flags/{key}`
+- `/metrics/stream` — SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
 - `/events` — SSE: every decoded WAL change, live
-- `/dashboard` — the embedded Phylax Console
 
 ```sh
-curl -sN localhost:8016/metrics/stream   # one JSON frame per second
+open http://localhost:8016          # the console
+curl -sN localhost:8016/metrics/stream
 ```
 
 ## Serve / sync guarantees
