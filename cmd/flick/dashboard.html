@@ -4,335 +4,476 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>flick · flag console</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ['Geist', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-      },
-      colors: {
-        bg: 'var(--bg)',
-        raised: 'var(--raised)',
-        recessed: 'var(--recessed)',
-        hover: 'var(--hover)',
-        ink: 'var(--ink)',
-        secondary: 'var(--secondary)',
-        muted: 'var(--muted)',
-        blue: 'var(--blue)',
-        red: 'var(--red)',
-        amber: 'var(--amber)',
-        green: 'var(--green)',
-      },
-    },
-  },
-};
-</script>
 <style>
-  /* ---- Responsive typography ---- */
-  @media (min-width: 640px) { .sm-text-sm { font-size: .875rem; } }
-  @media (min-width: 768px) { .md-text-base { font-size: 1rem; } }
-  @media (min-width: 1024px) { .lg-text-lg { font-size: 1.125rem; } }
-  @media (min-width: 1280px) { .xl-text-xl { font-size: 1.25rem; } }
-
-  /* ---- Design tokens (achromatic; blue is the only interactive accent) ---- */
+  /* ============================================================
+     flick console — a Postgres instrument.
+     Mono-led identity: Geist Mono carries every piece of data
+     (brand, metrics, keys, timestamps, labels). One interactive
+     accent (indigo); green/red are semantic only. Hairlines, not
+     shadows, draw the structure.
+     ============================================================ */
   :root {
-    --bg: #FAFAFA;
+    --bg: #F4F5F2;
     --raised: #FFFFFF;
-    --recessed: #F2F2F2;
-    --hover: #EBEBEB;
-    --ink: #171717;
-    --secondary: #4D4D4D;
-    --muted: #8F8F8F;
-    --blue: #0072F5;
-    --blue-focus: #005FCC;
-    --red: #E5484D;
-    --amber: #FF990A;
-    --green: #45A557;
-    /* shadow-as-border + elevation layers */
-    --bd: 0 0 0 1px rgb(0 0 0 / 0.08);
-    --shadow-sm: 0px 2px 2px rgb(0 0 0 / 0.04);
-    --shadow-md: 0px 2px 2px rgb(0 0 0 / 0.04), 0px 8px 8px -8px rgb(0 0 0 / 0.04);
-    --shadow-pop: 0px 1px 1px rgb(0 0 0 / 0.02), 0px 8px 16px -4px rgb(0 0 0 / 0.04), 0px 24px 32px -8px rgb(0 0 0 / 0.06);
-    --shadow-menu: 0px 1px 1px rgb(0 0 0 / 0.02), 0px 4px 8px -4px rgb(0 0 0 / 0.04), 0px 16px 24px -8px rgb(0 0 0 / 0.06);
-    /* double-ring focus: white gap + blue indicator */
-    --ring: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--blue);
-    --ease: cubic-bezier(.175, .885, .32, 1.1);
+    --recessed: #ECEEEA;
+    --hover: #E7E9E4;
+    --ink: #10151C;
+    --secondary: #5A6472;
+    --muted: #98A1AD;
+    --line: #E2E4DF;
+    --accent: #2A4BE0;
+    --live: #0FA968;
+    --danger: #D54444;
+    --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    --shadow-pop: 0 12px 32px -8px rgb(16 21 28 / .18), 0 2px 8px -4px rgb(16 21 28 / .12);
+    --ease: cubic-bezier(.2, .8, .2, 1);
   }
   .dark {
-    --bg: #0A0A0A;
-    --raised: #111111;
-    --recessed: #1A1A1A;
-    --hover: #1F1F1F;
-    --ink: #EDEDED;
-    --secondary: #A0A0A0;
-    --muted: #6F6F6F;
-    --blue: #0070F3;
-    --blue-focus: #3291FF;
-    --red: #EB5757;
-    --amber: #FF990A;
-    --green: #50B962;
-    --bd: 0 0 0 1px rgb(255 255 255 / 0.12);
-    --shadow-sm: 0px 2px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0px 2px 2px rgb(0 0 0 / 0.4), 0px 8px 8px -8px rgb(0 0 0 / 0.4);
-    --shadow-pop: 0px 1px 1px rgb(0 0 0 / 0.3), 0px 8px 16px -4px rgb(0 0 0 / 0.4), 0px 24px 32px -8px rgb(0 0 0 / 0.6);
-    --shadow-menu: 0px 1px 1px rgb(0 0 0 / 0.3), 0px 4px 8px -4px rgb(0 0 0 / 0.4), 0px 16px 24px -8px rgb(0 0 0 / 0.6);
-    --ring: 0 0 0 2px #0A0A0A, 0 0 0 4px var(--blue);
+    --bg: #0B0F14;
+    --raised: #12171F;
+    --recessed: #1B212B;
+    --hover: #212936;
+    --ink: #E8EBEF;
+    --secondary: #9AA5B2;
+    --muted: #5F6B7A;
+    --line: #222A36;
+    --accent: #6E8BFF;
+    --live: #2FBF7B;
+    --danger: #F06A6A;
+    --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / .5), 0 2px 8px -4px rgb(0 0 0 / .4);
   }
+
+  * { box-sizing: border-box; }
   html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-  body { background: var(--bg); color: var(--ink); font-feature-settings: 'liga'; }
-  ::selection { background: rgb(0 114 245 / 0.18); }
-  button { cursor: pointer; }
-  button:disabled { cursor: default; }
-
-  /* ---- surfaces: shadow-as-border, never CSS border ---- */
-  .card { background: var(--raised); border-radius: 12px; box-shadow: var(--bd); }
-  .card-hover { transition: box-shadow .15s ease; }
-  .card-hover:hover { box-shadow: var(--bd), var(--shadow-sm); }
-  .bd { box-shadow: var(--bd); }
-  .bd-menu { box-shadow: var(--bd), var(--shadow-menu); }
-  .bd-pop { box-shadow: var(--bd), var(--shadow-pop); }
-
-  /* ---- buttons: ghost-first, color-only interactions ---- */
-  .btn-ghost {
-    display: inline-flex; align-items: center; justify-content: center;
-    background: transparent; color: var(--secondary);
-    border-radius: 6px;
-    transition: background-color .12s ease, color .12s ease;
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "liga";
   }
-  .btn-ghost:hover { background: var(--hover); color: var(--ink); }
-  .btn-primary {
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--ink); color: var(--bg);
-    border-radius: 6px; font-weight: 500;
-    transition: background-color .12s ease;
-  }
-  .btn-primary:hover { background: color-mix(in srgb, var(--ink) 82%, transparent); }
-
-  /* ---- inputs: transparent, shadow border, focus outline ---- */
-  .input {
-    height: 40px; width: 100%; background: transparent;
-    border-radius: 6px; box-shadow: var(--bd);
-    font-size: 14px; color: var(--ink);
-    transition: box-shadow .12s ease;
-  }
-  .input-sm { height: 36px; }
-  .input::placeholder { color: var(--muted); }
-  .input:focus, .ta:focus { outline: 1px solid var(--blue-focus); outline-offset: 0; box-shadow: none; }
-  .ta {
-    width: 100%; background: transparent; border-radius: 6px; box-shadow: var(--bd);
-    font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: var(--ink);
-    resize: vertical; line-height: 1.6;
-  }
-
-  /* ---- double-ring focus pattern ---- */
-  .focus-ring:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+  .mono, .lkey b, .metric-value, .stream-text, .lcell, .pg, .meta, .count,
+  .live-status, .brand b, .brand .brand-sub, .input-mono { font-family: "Geist Mono", ui-monospace, monospace; }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { cursor: default; opacity: .4; }
+  :focus-visible { outline: 2px solid transparent; box-shadow: var(--ring); }
+  .hidden { display: none !important; }
+  .opacity-50 { opacity: .5; }
+  .opacity-60 { opacity: .6; }
+  .bg-recessed { background: var(--recessed); }
+  ::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 
   /* ---- header ---- */
   .header {
     position: sticky; top: 0; z-index: 30;
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
     backdrop-filter: blur(12px);
-    box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.08);
+    border-bottom: 1px solid var(--line);
   }
-  .dark .header { box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.1); }
+  .hdr { max-width: 1180px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 24px; }
+  .brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; color: var(--ink); border-radius: 6px; }
+  .brand b { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+  .brand .brand-sub { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+  .hdr .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .live-status {
+    display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; height: 30px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--raised);
+    font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--secondary);
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+  .live-status.streaming .live-dot { background: var(--live); animation: pulse 2.4s ease-out infinite; }
+  .live-status.reconnecting .live-dot { background: var(--amber, #C97B00); }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 8px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
 
-  /* ---- motion: swift easing, restrained ---- */
-  @keyframes modal-in { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: scale(1) } }
-  .modal-in { animation: modal-in .3s var(--ease); }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
-  .toast-in { animation: toast-in .2s var(--ease); }
-  @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
-  .fade-in { animation: fade-in .2s ease; }
-  summary::-webkit-details-marker { display: none; }
-  @media (pointer: coarse) {
-    /* touch targets: 44px minimum on touch devices */
-    .btn-ghost, .btn-primary, button[data-act], button[data-pg], .stateSeg { min-height: 44px; min-width: 44px; }
-    .input, .input-sm, .ta { min-height: 44px; }
-    .header { padding: 0 1rem; }
+  /* ---- buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 8px; border: 0;
+    font-size: 13px; font-weight: 500; color: var(--secondary); background: transparent;
+    transition: background-color .12s ease, color .12s ease;
   }
+  .btn:hover { background: var(--hover); color: var(--ink); }
+  .btn-icon { width: 34px; padding: 0; }
+  .btn-primary { background: var(--ink); color: var(--bg); }
+  .btn-primary:hover { background: color-mix(in srgb, var(--ink) 82%, transparent); color: var(--bg); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+
+  /* ---- stream strip (signature: the live heartbeat) ---- */
+  .stream { max-width: 1180px; margin: 22px auto 0; padding: 0 24px; }
+  .stream-inner {
+    display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 16px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px;
+  }
+  .stream-ico { color: var(--live); font-size: 15px; flex: none; }
+  .stream-text { color: var(--secondary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stream-text b { color: var(--ink); font-weight: 500; }
+  .stream-note { margin-left: auto; flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+
+  /* ---- metrics: one instrument panel ---- */
+  .metrics { max-width: 1180px; margin: 16px auto 0; padding: 0 24px; }
+  .metrics-panel {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  @media (min-width: 768px) { .metrics-panel { grid-template-columns: repeat(4, 1fr); } }
+  .metric { padding: 14px 18px 16px; min-width: 0; }
+  .metric:nth-child(odd) { border-right: 1px solid var(--line); }
+  .metric:nth-child(n+3) { border-top: 1px solid var(--line); }
+  @media (min-width: 768px) {
+    .metric { border-right: 1px solid var(--line); border-top: 0 !important; }
+    .metric:last-child { border-right: 0; }
+  }
+  .metric-label {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
+  }
+  .metric-label i { font-size: 13px; }
+  .metric-value {
+    margin-top: 7px; font-size: 26px; font-weight: 600; letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ---- toolbar + ledger list ---- */
+  .flags-wrap { max-width: 1180px; margin: 30px auto 0; padding: 0 24px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .toolbar .count { font-size: 11px; color: var(--muted); }
+  .searchbox { margin-left: auto; position: relative; }
+  .searchbox input {
+    height: 36px; width: min(240px, 100%); padding: 0 12px 0 32px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 8px;
+    font-size: 13px; color: var(--ink);
+  }
+  .searchbox input::placeholder { color: var(--muted); }
+  .searchbox input:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
+  .searchbox i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+
+  .ledger { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .lhead {
+    display: none; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 150px; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
+  }
+  @media (min-width: 768px) { .lhead { display: grid; } }
+
+  .lrow {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+    padding: 13px 16px; border-bottom: 1px solid var(--line);
+    transition: background-color .1s ease;
+  }
+  .lrow:last-child { border-bottom: 0; }
+  .lrow:hover { background: var(--hover); }
+  @media (min-width: 768px) {
+    .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 150px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
+  }
+  .lfirst { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot-on { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 18%, transparent); }
+  .dot-off { background: var(--muted); }
+  .dot-bad { background: var(--danger); }
+  .lkey { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+  .lkey b { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .lsub { font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  @media (min-width: 768px) { .lsub { display: none; } }
+  .lcell { font-size: 12px; color: var(--secondary); display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lcell-muted { color: var(--muted); }
+  @media (min-width: 768px) { .lcell { display: block; } }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500;
+  }
+  .chip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .lswitch { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  @media (min-width: 768px) { .lswitch { margin-left: 0; justify-content: flex-end; } }
+  .row-acts { display: none; }
+  @media (min-width: 768px) { .row-acts { display: flex; gap: 2px; } }
+  .relative { position: relative; }
+  .confirm {
+    position: absolute; right: 0; top: 40px; z-index: 20; display: flex; align-items: center; gap: 4px;
+    padding: 6px; background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-pop);
+  }
+  .lacts { display: flex; gap: 6px; width: 100%; }
+  @media (min-width: 768px) { .lacts { display: none; } }
+
+  /* ---- state switch ---- */
+  .switch {
+    display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px;
+    border-radius: 8px; border: 0; background: transparent;
+    font-size: 12px; font-weight: 500; color: var(--secondary);
+    transition: background-color .12s ease, color .12s ease;
+  }
+  .switch:hover { background: var(--hover); }
+  .switch.on { color: var(--ink); }
+  .switch-track {
+    position: relative; width: 34px; height: 20px; border-radius: 999px; flex: none;
+    background: var(--recessed); border: 1px solid var(--line);
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .switch-knob {
+    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .28);
+    transition: transform .15s var(--ease);
+  }
+  .switch.on .switch-track { background: var(--accent); border-color: var(--accent); }
+  .switch.on .switch-knob { transform: translateX(14px); }
+
+  /* ---- pager ---- */
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+  .pager .meta { font-size: 11px; color: var(--muted); }
+  .pager .btns { display: flex; gap: 4px; }
+  .pg {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px;
+    padding: 0 8px; border-radius: 7px; border: 0; background: transparent;
+    font-size: 12px; color: var(--secondary);
+    transition: background-color .1s ease, color .1s ease;
+  }
+  .pg:hover { background: var(--hover); color: var(--ink); }
+  .pg.cur { background: var(--ink); color: var(--bg); font-weight: 500; }
+  .pg:disabled { opacity: .35; pointer-events: none; }
+  .pg-ellipsis { padding: 0 4px; color: var(--muted); display: inline-flex; align-items: center; }
+
+  /* ---- empty state ---- */
+  .empty { padding: 60px 24px; text-align: center; }
+  .empty-ico {
+    width: 44px; height: 44px; margin: 0 auto; display: grid; place-items: center;
+    border-radius: 12px; background: var(--recessed); color: var(--muted); font-size: 20px;
+  }
+  .empty p { margin: 16px 0 0; font-size: 14px; font-weight: 500; }
+  .empty .hint { margin: 6px auto 0; font-size: 13px; color: var(--secondary); max-width: 440px; }
+  .empty .btn { margin-top: 20px; }
+
+  /* ---- modal ---- */
+  .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  @media (min-width: 768px) { .modal-backdrop { align-items: center; padding: 24px; } }
+  .modal-scrim { position: absolute; inset: 0; background: rgb(10 12 16 / .45); animation: fade .2s ease; }
+  .dark .modal-scrim { background: rgb(0 0 0 / .6); }
+  .modal-card {
+    position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+    background: var(--raised); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-pop);
+    animation: rise .25s var(--ease);
+  }
+  @media (min-width: 768px) { .modal-card { border-radius: 16px; } }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
+  .modal-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .modal-body { padding: 16px 20px 20px; }
+  .field { margin-bottom: 16px; }
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary); margin-bottom: 6px; }
+  .field-label .sub { font-weight: 400; color: var(--muted); }
+  .field-err { margin-top: 6px; font-size: 12px; color: var(--danger); }
+  .input {
+    width: 100%; height: 40px; padding: 0 12px;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; color: var(--ink);
+    transition: border-color .12s ease;
+  }
+  .input:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
+  .input::placeholder { color: var(--muted); }
+  .input-mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13px; }
+  .ta {
+    width: 100%; padding: 10px 12px; resize: vertical;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; line-height: 1.6; color: var(--ink);
+    transition: border-color .12s ease;
+  }
+  .ta:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
+  .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--recessed); border-radius: 10px; }
+  .seg button {
+    height: 32px; padding: 0 14px; border-radius: 7px; border: 0; background: transparent;
+    font-size: 13px; font-weight: 500; color: var(--secondary);
+    transition: background-color .12s ease, color .12s ease;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button.on { background: var(--raised); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+  .vrow { display: flex; gap: 8px; }
+  .vrow .input { flex: 1; }
+  .vrow .vval { flex: 1.4; }
+  details summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+  summary::-webkit-details-marker { display: none; }
+  details[open] .chev { transform: rotate(180deg); }
+  .chev { transition: transform .15s ease; color: var(--muted); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+
+  /* ---- toasts ---- */
+  .toasts { position: fixed; top: 74px; right: 16px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+  .toast {
+    pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-pop);
+    font-size: 13px; animation: toast-in .2s var(--ease);
+  }
+
+  /* ---- motion ---- */
+  @keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+  @media (pointer: coarse) {
+    .btn, .switch, .seg button, .pg, .input, .ta, .searchbox input { min-height: 44px; }
+    .btn-icon { width: 44px; }
   }
 </style>
 </head>
-<body class="font-sans min-h-screen">
+<body>
 
-<!-- ============ HEADER (64px, hairline shadow, blur) ============ -->
+<!-- ============ HEADER ============ -->
 <header class="header">
-  <div class="mx-auto max-w-[1400px] px-6 h-16 flex items-center gap-8">
-    <a href="/" class="flex items-baseline gap-1.5 focus-ring rounded-md">
-      <span class="text-[15px] font-semibold tracking-[-0.02em]">flick</span>
-      <span class="text-[13px] font-medium text-muted tracking-[-0.01em]">console</span>
+  <div class="hdr">
+    <a href="/" class="brand">
+      <b>flick</b>
+      <span class="brand-sub">console</span>
     </a>
-
-    <div class="ml-auto flex items-center gap-1">
-      <span class="hidden sm:flex items-center px-3 h-8 text-[13px] text-secondary" title="Live sync status">
+    <div class="right">
+      <span id="liveWrap" class="live-status">
+        <span class="live-dot"></span>
         <span id="liveText">connecting…</span>
       </span>
-      <button id="themeBtn" class="btn-ghost h-8 w-8 focus-ring" aria-label="Toggle theme">
-        <i id="themeIcon" class="ph ph-moon text-base"></i>
+      <button id="themeBtn" class="btn btn-icon" aria-label="Toggle theme">
+        <i id="themeIcon" class="ph ph-moon"></i>
       </button>
-      <button id="newBtn" class="btn-primary h-8 px-3.5 gap-1.5 text-[13px] focus-ring ml-1">
-        <i class="ph ph-plus text-sm"></i><span class="hidden sm:inline">New flag</span>
+      <button id="newBtn" class="btn btn-primary">
+        <i class="ph ph-plus"></i><span>New flag</span>
       </button>
     </div>
   </div>
+</header>
 
-<main class="mx-auto max-w-[1200px] px-6 pb-24 pt-8">
+<!-- ============ STREAM STRIP (signature) ============ -->
+<div class="stream">
+  <div class="stream-inner">
+    <i class="ph ph-broadcast stream-ico"></i>
+    <span id="lastEvent" class="stream-text">waiting for events…</span>
+    <span class="stream-note">outbox → flagd</span>
+  </div>
+</div>
 
-  <!-- ============ METRICS (achromatic cards, values only) ============ -->
-  <section aria-label="Live metrics" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-6">
-    <div class="card px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Flags</span>
-        <i class="ph ph-flag text-xs text-muted"></i>
-      </div>
-      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mFlags">–</div>
+<!-- ============ METRICS (instrument panel) ============ -->
+<section aria-label="Live metrics" class="metrics">
+  <div class="metrics-panel">
+    <div class="metric">
+      <div class="metric-label"><span>Flags</span><i class="ph ph-flag"></i></div>
+      <div class="metric-value" id="mFlags">–</div>
     </div>
-    <div class="card px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Delivered</span>
-        <i class="ph ph-paper-plane-tilt text-xs text-muted"></i>
-      </div>
-      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mDelivered">–</div>
+    <div class="metric">
+      <div class="metric-label"><span>Delivered</span><i class="ph ph-paper-plane-tilt"></i></div>
+      <div class="metric-value" id="mDelivered">–</div>
     </div>
-    <div class="card px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-secondary uppercase tracking-wider">WAL lag</span>
-        <i class="ph ph-gauge text-xs text-muted"></i>
-      </div>
-      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mLag">–</div>
+    <div class="metric">
+      <div class="metric-label"><span>WAL lag</span><i class="ph ph-gauge"></i></div>
+      <div class="metric-value" id="mLag">–</div>
     </div>
-    <div class="card px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Changes</span>
-        <i class="ph ph-lightning text-xs text-muted"></i>
-      </div>
-      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mChanges">–</div>
+    <div class="metric">
+      <div class="metric-label"><span>Changes</span><i class="ph ph-lightning"></i></div>
+      <div class="metric-value" id="mChanges">–</div>
     </div>
-    <div class="card px-4 py-3 hidden lg:block">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Flags</span>
-        <i class="ph ph-flag text-xs text-muted"></i>
-      </div>
-      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mFlagsLg">–</div>
-    </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ============ FLAGS ============ -->
-  <section>
-    <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <h2 class="text-[15px] font-medium tracking-[-0.02em]">Flags</h2>
-      <span id="flagCount" class="text-[12px] text-muted font-mono"></span>
-      <div class="relative ml-auto w-full max-w-[240px] min-w-0">
-        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted pointer-events-none"></i>
-        <input id="search" type="search" placeholder="Search flags…" autocomplete="off" class="input pl-9" />
-      </div>
+<!-- ============ FLAGS ============ -->
+<section class="flags-wrap">
+  <div class="toolbar">
+    <h2>Flags</h2>
+    <span id="flagCount" class="count"></span>
+    <div class="searchbox">
+      <i class="ph ph-magnifying-glass"></i>
+      <input id="search" type="search" placeholder="Search flags…" autocomplete="off" />
     </div>
+  </div>
 
-    <div id="listHeader" class="hidden md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] gap-3 px-5 pb-2 text-[12px] font-medium text-secondary uppercase tracking-wider">
-      <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
-    </div>
-    <div id="flags" class="flex flex-col gap-2"></div>
+  <div id="listHeader" class="lhead">
+    <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="right-aligned" style="text-align:right">State</span>
+  </div>
 
-    <div id="pager" class="flex items-center justify-between gap-3 mt-5 flex-wrap gap-y-2"></div>
+  <div class="ledger">
+    <div id="flags"></div>
+  </div>
 
-    <div id="empty" class="hidden px-6 py-20 text-center">
-      <span class="inline-grid place-items-center h-12 w-12 rounded-xl bg-recessed text-muted"><i class="ph ph-flag text-xl"></i></span>
-      <p class="mt-4 text-sm font-medium">No flags yet</p>
-      <p class="mt-1.5 text-[13px] text-secondary max-w-sm mx-auto">Create your first flag and it syncs to every connected flagd client within milliseconds.</p>
-      <button id="emptyNew" class="btn-primary mt-6 h-9 px-4 gap-1.5 text-[13px] focus-ring">
-        <i class="ph ph-plus text-sm"></i> Create your first flag
-      </button>
-    </div>
-  </section>
+  <div id="pager" class="pager"></div>
 
-  <!-- last event line -->
-  <footer class="mt-12 text-[12px] text-muted flex items-center gap-2">
-    <i class="ph ph-activity text-sm"></i>
-    <span id="lastEvent">last event: —</span>
-  </footer>
-</main>
+  <div id="empty" class="empty hidden">
+    <div class="empty-ico"><i class="ph ph-flag"></i></div>
+    <p>No flags yet</p>
+    <p class="hint">Create your first flag and it streams to every connected flagd client within milliseconds.</p>
+    <button id="emptyNew" class="btn btn-primary"><i class="ph ph-plus"></i> Create your first flag</button>
+  </div>
+</section>
 
 <!-- ============ FLAG MODAL ============ -->
-<div id="modalBackdrop" class="fixed inset-0 z-40 hidden">
-  <div class="absolute inset-0 bg-[rgb(23_23_23/0.4)] dark:bg-black/60 fade-in" id="modalScrim"></div>
-  <div class="absolute inset-x-0 bottom-0 md:inset-0 md:grid md:place-items-center p-0 md:p-6 overflow-y-auto">
-    <div id="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
-      class="modal-in w-full md:max-w-lg rounded-t-xl md:rounded-xl bd-pop" style="background:var(--raised)">
-      <div class="flex items-center justify-between pl-5 pr-3 h-14">
-        <h2 id="modalTitle" class="text-[14px] font-semibold tracking-[-0.01em]">New flag</h2>
-        <button id="modalClose" class="btn-ghost h-8 w-8 focus-ring" aria-label="Close"><i class="ph ph-x text-base"></i></button>
+<div id="modalBackdrop" class="modal-backdrop hidden">
+  <div class="modal-scrim" id="modalScrim"></div>
+  <div id="modalCard" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h2 id="modalTitle">New flag</h2>
+      <button id="modalClose" class="btn btn-icon" aria-label="Close"><i class="ph ph-x"></i></button>
+    </div>
+
+    <form id="flagForm" class="modal-body" novalidate>
+      <div class="field">
+        <label for="fKey" class="field-label">Key</label>
+        <input id="fKey" required class="input input-mono" placeholder="show-banner" autocomplete="off" />
+        <p id="fKeyErr" class="field-err hidden"></p>
       </div>
 
-      <form id="flagForm" class="px-5 pb-5 space-y-4" novalidate>
-        <div>
-          <label for="fKey" class="block text-[13px] font-medium text-secondary mb-1.5">Key</label>
-          <input id="fKey" required class="input font-mono" placeholder="show-banner" autocomplete="off" />
-          <p id="fKeyErr" class="hidden mt-1.5 text-[12px] text-red"></p>
+      <div class="field">
+        <span class="field-label">State</span>
+        <div class="seg">
+          <button type="button" data-state="ENABLED" class="stateSeg">Enabled</button>
+          <button type="button" data-state="DISABLED" class="stateSeg">Disabled</button>
         </div>
+      </div>
 
-        <div>
-          <span class="block text-[13px] font-medium text-secondary mb-1.5">State</span>
-          <div class="grid grid-cols-2 gap-1 p-1 rounded-md bg-recessed w-fit">
-            <button type="button" data-state="ENABLED" class="stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors">Enabled</button>
-            <button type="button" data-state="DISABLED" class="stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors">Disabled</button>
+      <div class="field">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span class="field-label" style="margin-bottom:0">Variants</span>
+          <button type="button" id="addVariant" class="btn"><i class="ph ph-plus"></i> Add variant</button>
+        </div>
+        <div id="variantRows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <p id="fVariantsErr" class="field-err hidden"></p>
+      </div>
+
+      <div class="field">
+        <label for="fDefault" class="field-label">Default variant</label>
+        <select id="fDefault" class="input input-mono"></select>
+      </div>
+
+      <details>
+        <summary class="btn"><span>Targeting &amp; metadata</span><i class="ph ph-caret-down chev"></i></summary>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label for="fTargeting" class="field-label">targeting <span class="sub">(JSON)</span></label>
+            <textarea id="fTargeting" rows="3" spellcheck="false" class="ta">{"country":["NG"]}</textarea>
+          </div>
+          <div>
+            <label for="fMetadata" class="field-label">metadata <span class="sub">(JSON)</span></label>
+            <textarea id="fMetadata" rows="2" spellcheck="false" class="ta">{"owner":"platform"}</textarea>
           </div>
         </div>
+      </details>
 
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-[13px] font-medium text-secondary">Variants</span>
-            <button type="button" id="addVariant" class="btn-ghost h-7 px-2 gap-1 text-[12px] font-medium focus-ring">
-              <i class="ph ph-plus text-sm"></i> Add variant
-            </button>
-          </div>
-          <div id="variantRows" class="space-y-2"></div>
-          <p id="fVariantsErr" class="hidden mt-1.5 text-[12px] text-red"></p>
-        </div>
+      <p id="fFormErr" class="field-err hidden"></p>
 
-        <div>
-          <label for="fDefault" class="block text-[13px] font-medium text-secondary mb-1.5">Default variant</label>
-          <select id="fDefault" class="input font-mono px-2"></select>
-        </div>
-
-        <details class="group">
-          <summary class="btn-ghost h-8 px-2 gap-1 text-[13px] font-medium select-none" style="width:fit-content">
-            Targeting &amp; metadata <i class="ph ph-caret-down text-sm transition-transform group-open:rotate-180"></i>
-          </summary>
-          <div class="mt-3 space-y-3">
-            <div>
-              <label for="fTargeting" class="block text-[12px] font-medium text-muted mb-1">targeting <span class="font-normal">(JSON)</span></label>
-              <textarea id="fTargeting" rows="3" spellcheck="false" class="ta p-2.5">{"country":["NG"]}</textarea>
-            </div>
-            <div>
-              <label for="fMetadata" class="block text-[12px] font-medium text-muted mb-1">metadata <span class="font-normal">(JSON)</span></label>
-              <textarea id="fMetadata" rows="2" spellcheck="false" class="ta p-2.5">{"owner":"platform"}</textarea>
-            </div>
-          </div>
-        </details>
-
-        <p id="fFormErr" class="hidden text-[12px] text-red"></p>
-
-        <div class="flex items-center justify-end gap-2 pt-4">
-          <button type="button" id="modalCancel" class="btn-ghost h-9 px-4 text-[13px] focus-ring">Cancel</button>
-          <button type="submit" class="btn-primary h-9 px-4 text-[13px] focus-ring">Save flag</button>
-        </div>
-      </form>
-    </div>
+      <div class="modal-actions">
+        <button type="button" id="modalCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save flag</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <!-- ============ TOASTS ============ -->
-<div id="toasts" class="fixed top-16 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
+<div id="toasts" class="toasts"></div>
 
 <script>
 "use strict";
@@ -343,7 +484,7 @@ const param = new URLSearchParams(location.search).get("theme");
 const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
 const setTheme = (dark) => {
   document.documentElement.classList.toggle("dark", dark);
-  document.getElementById("themeIcon").className = "ph text-base " + (dark ? "ph-sun" : "ph-moon");
+  document.getElementById("themeIcon").className = "ph " + (dark ? "ph-sun" : "ph-moon");
   localStorage.setItem("flick-theme", dark ? "dark" : "light");
 };
 setTheme(param ? param === "dark" : stored ? stored === "dark" : prefersDark);
@@ -370,7 +511,6 @@ const refreshFlags = async () => {
     const data = await api("/api/flags");
     flags = data.flags || [];
     $("mFlags").textContent = flags.length;
-    $("mFlagsLg").textContent = flags.length;
     render();
   } catch (err) { toast("Failed to load flags: " + err.message, "bad"); }
 };
@@ -397,55 +537,43 @@ const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">
 
 const switchHTML = (f, label) => `
   <button data-act="toggle" role="switch" aria-checked="${f.state === "ENABLED"}" aria-label="Toggle ${esc(f.key)}"
-    class="inline-flex items-center gap-2.5 h-8 px-2 rounded-md transition-colors focus-ring cursor-pointer">
-    <span class="relative h-[18px] w-8 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-blue" : "bg-recessed bd"}" style="flex:none">
-      <span class="absolute top-[1px] h-4 w-4 rounded-full transition-all ${f.state === "ENABLED" ? "left-[14px]" : "left-[1px]"} knob" style="background:#fff;box-shadow:0 0 0 1px rgb(0 0 0/.08),0 1px 2px rgb(0 0 0/.18)"></span>
-    </span>
-    <span class="text-[13px] font-medium ${f.state === "ENABLED" ? "text-ink" : "text-secondary"}">${label}</span>
+    class="switch ${f.state === "ENABLED" ? "on" : ""}">
+    <span class="switch-track"><span class="switch-knob"></span></span>
+    <span>${label}</span>
   </button>`;
 
 function rowHTML(f) {
   const targeting = hasTargeting(f.targeting);
   const on = f.state === "ENABLED";
   return `
-  <div data-key="${esc(f.key)}" class="card card-hover">
-    <div class="px-5 py-3.5 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <span class="size-2.5 rounded-full ${on ? "bg-green" : "bg-muted"}" aria-hidden="true"></span>
-        <div class="min-w-0 flex-1">
-          <p class="font-mono text-sm font-medium truncate">${esc(f.key)}</p>
-          <p class="text-[10px] text-muted md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
-        </div>
-        <div class="ml-auto flex items-center gap-1.5 md:hidden">
-          <span class="text-[10px] font-medium ${on ? "text-green" : "text-muted"}">${f.state}</span>
-          ${switchHTML(f, on ? "Enabled" : "Disabled")}
-        </div>
-      </div>
-
-      <span class="hidden md:block truncate font-mono text-[12px] text-secondary">${esc(f.defaultVariant)}</span>
-      <span class="hidden md:block font-mono text-[12px] text-muted">${variantCount(f.variants)}</span>
-      <span class="hidden md:block">
-        ${targeting ? `<span class="inline-flex items-center gap-1.5 text-[12px] text-secondary" title="Has targeting rules"><span class="size-2.5 rounded-full bg-blue"></span>targeted</span>` : '<span class="text-[12px] text-muted/60">—</span>'}
-      </span>
-      <span class="hidden md:block text-[12px] text-muted">${fmtTime(f.updatedAt)}</span>
-
-      <div class="hidden md:flex justify-end">
-        ${switchHTML(f, on ? "Enabled" : "Disabled")}
+  <div data-key="${esc(f.key)}" class="lrow">
+    <div class="lfirst">
+      <span class="dot ${on ? "dot-on" : "dot-off"}" aria-hidden="true"></span>
+      <div class="lkey">
+        <b>${esc(f.key)}</b>
+        <span class="lsub">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</span>
       </div>
     </div>
-    <div class="md:hidden flex items-center gap-1 px-5 pb-3 -mt-0.5 pl-[44px]">
-      <button data-act="edit" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
-      <button data-act="delMobile" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring hover:text-red"><i class="ph ph-trash text-sm"></i> Delete</button>
-    </div>
-    <div class="hidden md:flex items-center gap-0.5 px-5 pb-3 justify-end">
-      <button data-act="edit" class="btn-ghost h-8 w-8 focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
-      <span class="relative">
-        <button data-act="delete" class="btn-ghost h-8 w-8 focus-ring hover:text-red" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash text-sm"></i></button>
-        <span data-confirm class="hidden absolute right-0 top-9 z-10 rounded-lg bd-menu p-1" style="background:var(--raised)">
-          <button data-act="confirmDelete" class="h-8 px-3 rounded-md text-[13px] font-medium text-red hover:bg-recessed focus-ring">Delete</button>
-          <button data-act="cancelDelete" class="h-8 w-8 grid place-items-center rounded-md text-muted hover:bg-recessed focus-ring" aria-label="Cancel"><i class="ph ph-x text-sm"></i></button>
+    <span class="lcell">${esc(f.defaultVariant)}</span>
+    <span class="lcell lcell-muted">${variantCount(f.variants)}</span>
+    <span class="lcell">${targeting ? `<span class="chip">targeted</span>` : '<span class="lcell-muted">—</span>'}</span>
+    <span class="lcell lcell-muted">${fmtTime(f.updatedAt)}</span>
+    <div class="lswitch">
+      ${switchHTML(f, on ? "Enabled" : "Disabled")}
+      <span class="row-acts">
+        <button data-act="edit" class="btn btn-icon" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple"></i></button>
+        <span class="relative">
+          <button data-act="delete" class="btn btn-icon btn-danger" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash"></i></button>
+          <span class="confirm hidden" data-confirm>
+            <button data-act="confirmDelete" class="btn btn-danger">Delete</button>
+            <button data-act="cancelDelete" class="btn btn-icon" aria-label="Cancel"><i class="ph ph-x"></i></button>
+          </span>
         </span>
       </span>
+    </div>
+    <div class="lacts">
+      <button data-act="edit" class="btn"><i class="ph ph-pencil-simple"></i> Edit</button>
+      <button data-act="delMobile" class="btn btn-danger"><i class="ph ph-trash"></i> Delete</button>
     </div>
   </div>`
 }
@@ -470,16 +598,14 @@ function renderPager(filtered) {
     nums.push(i);
   }
   const numBtns = nums.map((n) => n === "…"
-    ? `<span class="px-1 text-muted">…</span>`
-    : `<button data-pg="${n}" aria-label="Page ${n}" class="h-7 min-w-7 px-1.5 rounded-md text-[12px] font-mono focus-ring transition-colors ${n === page ? "bg-ink text-bg font-medium" : "text-secondary hover:bg-hover hover:text-ink"}">${n}</button>`).join("");
+    ? `<span class="pg-ellipsis">…</span>`
+    : `<button data-pg="${n}" aria-label="Page ${n}" class="pg ${n === page ? "cur" : ""}">${n}</button>`).join("");
   pagerEl.innerHTML = `
-    <span class="text-[12px] text-muted font-mono">${from}–${to} of ${filtered.length}</span>
-    <div class="flex items-center gap-1">
-      <button data-pg="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Previous page"
-        class="h-7 w-7 grid place-items-center rounded-md text-secondary hover:bg-hover hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-left text-sm"></i></button>
+    <span class="meta">${from}–${to} of ${filtered.length}</span>
+    <div class="btns">
+      <button data-pg="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Previous page" class="pg"><i class="ph ph-caret-left"></i></button>
       ${numBtns}
-      <button data-pg="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Next page"
-        class="h-7 w-7 grid place-items-center rounded-md text-secondary hover:bg-hover hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-right text-sm"></i></button>
+      <button data-pg="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Next page" class="pg"><i class="ph ph-caret-right"></i></button>
     </div>`;
 }
 
@@ -490,7 +616,7 @@ function render() {
   const filtered = q ? flags.filter((f) => f.key.toLowerCase().includes(q)) : flags;
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   listEl.innerHTML = slice.map(rowHTML).join("") ||
-    `<div class="px-6 py-14 text-center text-[13px] text-muted">No flags match “${esc(q)}”</div>`;
+    `<div class="empty" style="padding:40px 24px"><p class="hint">No flags match “${esc(q)}”</p></div>`;
   listEl.classList.toggle("hidden", flags.length === 0);
   renderPager(filtered);
 }
@@ -530,7 +656,7 @@ listEl.addEventListener("click", async (e) => {
       if (btn.dataset.armed) return doDelete(key);
       btn.dataset.armed = "1";
       btn.classList.add("bg-recessed");
-      btn.innerHTML = '<i class="ph ph-check text-sm"></i> Delete?';
+      btn.innerHTML = '<i class="ph ph-check"></i> Delete?';
       setTimeout(() => render(), 2500);
       return;
     }
@@ -619,9 +745,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.c
 
 function paintStateSeg() {
   document.querySelectorAll(".stateSeg").forEach((b) => {
-    const on = b.dataset.state === formState;
-    b.className = "stateSeg h-8 px-4 rounded-[5px] text-[13px] font-medium focus-ring transition-colors cursor-pointer " +
-      (on ? "bg-raised bd text-ink" : "text-secondary hover:text-ink");
+    b.classList.toggle("on", b.dataset.state === formState);
   });
 }
 document.querySelectorAll(".stateSeg").forEach((b) =>
@@ -635,14 +759,14 @@ function setVariantRows(pairs) {
 }
 function variantRow(name, value) {
   const div = document.createElement("div");
-  div.className = "flex gap-1.5";
+  div.className = "vrow";
   const v = typeof value === "string" ? value : JSON.stringify(value);
   div.innerHTML = `
     <input data-v name spellcheck="false" value="${esc(name)}" placeholder="variant"
-      class="input input-sm flex-1 font-mono px-2.5" />
+      class="input input-mono" />
     <input data-val val spellcheck="false" value="${esc(v)}" placeholder="value (JSON)"
-      class="input input-sm flex-[1.4] font-mono px-2.5" />
-    <button type="button" data-rm class="btn-ghost h-9 w-9 shrink-0 focus-ring hover:text-red" aria-label="Remove variant"><i class="ph ph-minus text-base"></i></button>`;
+      class="input input-mono vval" />
+    <button type="button" data-rm class="btn btn-icon btn-danger" aria-label="Remove variant"><i class="ph ph-minus"></i></button>`;
   div.querySelector("[data-rm]").addEventListener("click", () => {
     div.remove(); paintDefaultSelect();
   });
@@ -725,12 +849,11 @@ $("flagForm").addEventListener("submit", async (e) => {
   }
 });
 
-/* ---------- toasts (dot + text, achromatic) ---------- */
+/* ---------- toasts ---------- */
 function toast(msg, tone = "good") {
   const el = document.createElement("div");
-  el.className = "toast-in pointer-events-auto flex items-center gap-2.5 rounded-lg bd-menu px-3.5 py-2.5 text-[13px]";
-  el.style.background = "var(--raised)";
-  el.innerHTML = `<span class="size-2.5 rounded-full ${tone === "good" ? "bg-green" : "bg-red"}"></span>${esc(msg)}`;
+  el.className = "toast";
+  el.innerHTML = `<span class="dot ${tone === "good" ? "dot-on" : "dot-bad"}"></span>${esc(msg)}`;
   $("toasts").appendChild(el);
   setTimeout(() => el.remove(), 3200);
 }
@@ -743,12 +866,17 @@ const scheduleRefresh = () => {
   setTimeout(() => { refreshPending = false; refreshFlags(); }, 150);
 };
 
+const liveWrap = $("liveWrap");
 const evt = new EventSource("/events");
 evt.onopen = () => {
   $("liveText").textContent = "streaming";
+  liveWrap.classList.add("streaming");
+  liveWrap.classList.remove("reconnecting");
 };
 evt.onerror = () => {
   $("liveText").textContent = "reconnecting";
+  liveWrap.classList.remove("streaming");
+  liveWrap.classList.add("reconnecting");
 };
 evt.onmessage = (msg) => {
   try {
@@ -758,7 +886,7 @@ evt.onmessage = (msg) => {
       let p = {};
       if (raw) p = (typeof raw === "string") ? JSON.parse(raw) : raw;
       if (p.key) {
-        $("lastEvent").textContent = `last event: ${c.Table} — ${p.key} ${p.deleted ? "(deleted)" : p.state || ""}`.trim();
+        $("lastEvent").innerHTML = `<b>#${c.NewRow.id}</b> ${c.Table} · ${esc(p.key)} ${p.deleted ? "deleted" : p.state || "changed"}`;
         scheduleRefresh();
       }
     }
