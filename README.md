@@ -107,6 +107,9 @@ DSN resolution: `--dsn` flag → `FLICK_DSN` env → `postgres://postgres:postgr
 
 ### 3. Point flagd at it
 
+> [!NOTE]
+> Don't have flagd yet? Download the latest binary from the [flagd releases](https://github.com/open-feature/flagd/releases) page (or use Docker: `docker pull ghcr.io/open-feature/flagd:latest`). Note that `go install github.com/open-feature/flagd/flagd@latest` is **not** supported — flagd's module depends on unpublished local workspace modules, so use a versioned release binary instead.
+
 ```sh
 flagd start --sources '[{"uri":"localhost:8015","provider":"grpc"}]'
 ```
