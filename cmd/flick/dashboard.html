@@ -246,13 +246,14 @@ tailwind.config = {
 
 /* ---------- theme ---------- */
 const stored = localStorage.getItem("flick-theme");
+const param = new URLSearchParams(location.search).get("theme");
 const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
 const setTheme = (dark) => {
   document.documentElement.classList.toggle("dark", dark);
   document.getElementById("themeIcon").className = "ph text-lg " + (dark ? "ph-sun" : "ph-moon");
   localStorage.setItem("flick-theme", dark ? "dark" : "light");
 };
-setTheme(stored ? stored === "dark" : prefersDark);
+setTheme(param ? param === "dark" : stored ? stored === "dark" : prefersDark);
 document.getElementById("themeBtn").addEventListener("click", () =>
   setTheme(!document.documentElement.classList.contains("dark")));
 
