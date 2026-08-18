@@ -2,13 +2,34 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"log"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/codetesla51/flick"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+// TestMain applies the embedded migrations so the E2E CLI + dashboard tests
+// work against a fresh database (CI spins up a bare postgres service).
+func TestMain(m *testing.M) {
+	dsn := os.Getenv("FLICK_DSN")
+	if dsn == "" {
+		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
+	}
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		log.Fatalf("migrations: open db: %v", err)
+	}
+	if err := flick.Migrate(db); err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
+	db.Close()
+	os.Exit(m.Run())
+}
 
 // runCLI executes the root command in-process with the given args and
 // returns captured stdout+stderr.

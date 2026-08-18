@@ -2,13 +2,34 @@ package flick
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"log"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+// TestMain applies the embedded migrations so the E2E tests work against a
+// fresh database (CI spins up a bare postgres service container).
+func TestMain(m *testing.M) {
+	dsn := os.Getenv("FLICK_DSN")
+	if dsn == "" {
+		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
+	}
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		log.Fatalf("migrations: open db: %v", err)
+	}
+	if err := Migrate(db); err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
+	db.Close()
+	os.Exit(m.Run())
+}
 
 func TestSetFlagE2E(t *testing.T) {
 	dsn := os.Getenv("FLICK_DSN")
