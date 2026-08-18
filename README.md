@@ -181,23 +181,90 @@ curl -sN localhost:8016/metrics/stream
 
 ## Using it from your app (any language)
 
-Your app uses the standard [OpenFeature](https://openfeature.dev) SDK with the flagd provider — no flick-specific code. Go example:
+Your app talks to flagd through the standard [OpenFeature](https://openfeature.dev) SDK plus a flagd provider — the same pattern in every language: register the provider once, then evaluate a flag with its **key**, a **fallback**, and an **evaluation context** (user id, country, env…). flagd pushes updates to connected SDKs, so toggling a flag in flick reaches your app without a restart or reload.
+
+| Language | Install |
+|---|---|
+| Go | `go get github.com/open-feature/go-sdk github.com/open-feature/go-sdk-contrib/providers/flagd/pkg` |
+| Python | `pip install openfeature-provider-flagd` |
+| Node.js / TS | `npm install @openfeature/server-sdk @openfeature/flagd-provider` |
+| Java | `dev.openfeature.contrib.providers:flagd` (Maven) |
+| .NET | `dotnet add package OpenFeature.Providers.Flagd` |
+| Rust / PHP / Ruby / … | see [flagd providers](https://flagd.dev/providers/) |
+
+### Go
 
 ```go
-import (
-    "github.com/open-feature/go-sdk/openfeature"
-    flagd "github.com/open-feature/go-sdk-contrib/providers/flagd/pkg"
-)
-
 provider, _ := flagd.NewProvider() // connects to flagd evaluation on :8013
 openfeature.SetProvider(provider)
 client := openfeature.NewClient("my-app")
 
-enabled, err := client.BooleanValue(
-    ctx, "show-banner", false,
-    openfeature.NewEvaluationContext("user-1", map[string]any{"country": "NG"}),
-)
+ctx := openfeature.NewEvaluationContext("user-1", map[string]any{"country": "NG"})
+
+checkoutV2, _ := client.BooleanValue(ctx, "checkout-v2", false, ctx)
+currency, _  := client.StringValue(ctx, "checkout-currency", "$", ctx)
 ```
+
+### Python
+
+```python
+from openfeature import api
+from openfeature.contrib.provider.flagd import FlagdProvider
+
+api.set_provider(FlagdProvider())          # flagd on localhost:8013
+client = api.get_client(name="my-app")
+
+ctx = {"targetingKey": "user-1", "country": "NG"}
+checkout_v2 = client.get_boolean_value("checkout-v2", False, ctx)
+currency = client.get_string_value("checkout-currency", "$", ctx)
+```
+
+### Node.js (TypeScript)
+
+```ts
+import { OpenFeature } from '@openfeature/server-sdk';
+import { FlagdProvider } from '@openfeature/flagd-provider';
+
+await OpenFeature.setProvider(new FlagdProvider());   // flagd on localhost:8013
+const client = OpenFeature.getClient('my-app');
+
+const ctx = { targetingKey: 'user-1', country: 'NG' };
+const checkoutV2 = await client.getBooleanValue('checkout-v2', false, ctx);
+const currency = await client.getStringValue('checkout-currency', '$', ctx);
+```
+
+### Java
+
+```java
+import dev.openfeature.contrib.providers.flagd.FlagdProvider;
+import dev.openfeature.sdk.*;
+
+OpenFeatureAPI.getInstance().setProvider(new FlagdProvider()); // flagd on localhost:8013
+Client client = OpenFeatureAPI.getInstance().getClient("my-app");
+
+EvaluationContext ctx = new ImmutableContext(Map.of("targetingKey", "user-1", "country", "NG"));
+boolean checkoutV2 = client.getBooleanValue("checkout-v2", false, ctx);
+String currency = client.getStringValue("checkout-currency", "$", ctx);
+```
+
+### .NET
+
+```csharp
+using OpenFeature;
+using OpenFeature.Providers.Flagd;
+
+OpenFeature.Api.Instance.SetProvider(new FlagdProvider()); // flagd on localhost:8013
+var client = OpenFeature.Api.Instance.GetClient("my-app");
+
+var ctx = new EvaluationContextBuilder()
+    .Set("targetingKey", "user-1")
+    .Set("country", "NG")
+    .Build();
+var checkoutV2 = await client.GetBooleanValueAsync("checkout-v2", false, ctx);
+var currency = await client.GetStringValueAsync("checkout-currency", "$", ctx);
+```
+
+The evaluation context is how targeting works: a `country=NG` user gets `checkout-v2`, the `₦` currency, and the NG banner — while a US user falls back to defaults. Same flags, different answers, all evaluated by flagd.
 
 ## Serve / sync guarantees
 
