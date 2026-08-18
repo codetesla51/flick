@@ -63,5 +63,5 @@ func resolveDSN() string {
 	if v := os.Getenv("FLICK_DSN"); v != "" {
 		return v
 	}
-	return "postgres://us:2@localhost:5432/flick?sslmode=disable"
+	return "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
 }

@@ -36,6 +36,12 @@ tailwind.config = {
 };
 </script>
 <style>
+  /* ---- Responsive typography ---- */
+  @media (min-width: 640px) { .sm-text-sm { font-size: .875rem; } }
+  @media (min-width: 768px) { .md-text-base { font-size: 1rem; } }
+  @media (min-width: 1024px) { .lg-text-lg { font-size: 1.125rem; } }
+  @media (min-width: 1280px) { .xl-text-xl { font-size: 1.25rem; } }
+
   /* ---- Design tokens (achromatic; blue is the only interactive accent) ---- */
   :root {
     --bg: #FAFAFA;
@@ -146,6 +152,11 @@ tailwind.config = {
   @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
   .fade-in { animation: fade-in .2s ease; }
   summary::-webkit-details-marker { display: none; }
+  @media (pointer: coarse) {
+    /* touch targets: 44px minimum on touch devices */
+    .btn-ghost, .btn-primary, button[data-act], button[data-pg], .stateSeg { min-height: 44px; min-width: 44px; }
+    .input, .input-sm, .ta { min-height: 44px; }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
@@ -155,9 +166,10 @@ tailwind.config = {
 
 <!-- ============ HEADER (64px, hairline shadow, blur) ============ -->
 <header class="header">
-  <div class="mx-auto max-w-[1200px] px-6 h-16 flex items-center gap-8">
-    <a href="/" class="flex items-center gap-2.5 focus-ring rounded-md">
+  <div class="mx-auto max-w-[1400px] px-6 h-16 flex items-center gap-8">
+    <a href="/" class="flex items-baseline gap-1.5 focus-ring rounded-md">
       <span class="text-[15px] font-semibold tracking-[-0.02em]">flick</span>
+      <span class="text-[13px] font-medium text-muted tracking-[-0.01em]">console</span>
     </a>
 
     <div class="ml-auto flex items-center gap-1">
@@ -172,59 +184,73 @@ tailwind.config = {
       </button>
     </div>
   </div>
-</header>
+
+  @media (pointer: coarse) {
+    .header { padding: 0 1rem; } }
 
 <main class="mx-auto max-w-[1200px] px-6 pb-24 pt-8">
 
   <!-- ============ METRICS (achromatic cards, values only) ============ -->
-  <section aria-label="Live metrics" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-8">
-    <div class="card px-5 py-4">
+  <section aria-label="Live metrics" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 mb-6">
+    <div class="card px-4 py-3">
       <div class="flex items-center justify-between">
-        <span class="text-[12px] font-medium text-secondary">Flags</span>
-        <i class="ph ph-flag text-sm text-muted"></i>
+        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Flags</span>
+        <i class="ph ph-flag text-xs text-muted"></i>
       </div>
-      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mFlags">–</div>
+      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mFlags">–</div>
     </div>
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
       <div class="flex items-center justify-between">
-        <span class="text-[12px] font-medium text-secondary">Delivered</span>
-        <i class="ph ph-paper-plane-tilt text-sm text-muted"></i>
+        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Delivered</span>
+        <i class="ph ph-paper-plane-tilt text-xs text-muted"></i>
       </div>
-      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mDelivered">–</div>
+      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mDelivered">–</div>
     </div>
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
       <div class="flex items-center justify-between">
-        <span class="text-[12px] font-medium text-secondary">WAL lag</span>
-        <i class="ph ph-gauge text-sm text-muted"></i>
+        <span class="text-xs font-medium text-secondary uppercase tracking-wider">WAL lag</span>
+        <i class="ph ph-gauge text-xs text-muted"></i>
       </div>
-      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mLag">–</div>
+      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mLag">–</div>
     </div>
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
       <div class="flex items-center justify-between">
-        <span class="text-[12px] font-medium text-secondary">Changes</span>
-        <i class="ph ph-lightning text-sm text-muted"></i>
+        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Changes</span>
+        <i class="ph ph-lightning text-xs text-muted"></i>
       </div>
-      <div class="mt-1.5 font-mono text-[26px] font-semibold tabular-nums tracking-[-0.02em]" id="mChanges">–</div>
+      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mChanges">–</div>
+    </div>
+    <div class="card px-4 py-3 hidden lg:block">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-secondary uppercase tracking-wider">Flags</span>
+        <i class="ph ph-flag text-xs text-muted"></i>
+      </div>
+      <div class="mt-1 font-mono text-sm font-semibold tabular-nums" id="mFlagsLg">–</div>
     </div>
   </section>
 
   <!-- ============ FLAGS ============ -->
   <section>
-    <div class="flex items-center gap-3 mb-4">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
       <h2 class="text-[15px] font-medium tracking-[-0.02em]">Flags</h2>
       <span id="flagCount" class="text-[12px] text-muted font-mono"></span>
-      <div class="relative ml-auto w-full max-w-[240px]">
+      <div class="relative ml-auto w-full max-w-[240px] min-w-0">
         <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted pointer-events-none"></i>
         <input id="search" type="search" placeholder="Search flags…" autocomplete="off" class="input pl-9" />
       </div>
     </div>
 
-    <div id="listHeader" class="hidden md:grid grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] gap-3 px-6 pb-2 text-[12px] font-medium text-secondary">
-      <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
+    <div class="@container">
+      <div id="listHeader" class="hidden @3xl:grid @3xl:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] @3xl:gap-3 px-6 pb-2 text-[12px] font-medium text-secondary uppercase tracking-wider">
+        <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
+      </div>
+      <div id="listHeaderSm" class="hidden @md:grid @md:grid-cols-6 @md:gap-2 px-3 pb-2 text-[10px] font-medium text-secondary uppercase tracking-wider">
+        <span>Key</span><span>State</span><span>Variants</span><span>Targeting</span><span>Updated</span><span>Actions</span>
+      </div>
+      <div id="flags" class="flex flex-col gap-2"></div>
     </div>
-    <div id="flags" class="flex flex-col gap-2"></div>
 
-    <div id="pager" class="flex items-center justify-between gap-3 mt-5"></div>
+    <div class="flex items-center justify-between gap-3 mt-5 flex-wrap gap-y-2"></div>
 
     <div id="empty" class="hidden px-6 py-20 text-center">
       <span class="inline-grid place-items-center h-12 w-12 rounded-xl bg-recessed text-muted"><i class="ph ph-flag text-xl"></i></span>
@@ -389,38 +415,46 @@ function rowHTML(f) {
   const on = f.state === "ENABLED";
   return `
   <div data-key="${esc(f.key)}" class="card card-hover">
-    <div class="px-6 py-3.5 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
-      <div class="flex items-center gap-3 min-w-0">
+    <div class="px-5 py-3 @3xl:grid @3xl:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] @3xl:gap-3 @3xl:items-center @md:flex @md:flex-col">
+      <div class="flex items-center gap-2.5 min-w-0 @md:w-full">
         <span class="size-2.5 rounded-full ${on ? "bg-green" : "bg-muted"}" aria-hidden="true"></span>
-        <div class="min-w-0">
-          <p class="font-mono text-[13px] font-medium truncate">${esc(f.key)}</p>
-          <p class="text-[11px] text-muted md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
+        <div class="min-w-0 flex-1">
+          <p class="font-mono text-sm font-medium truncate">${esc(f.key)}</p>
+          <p class="text-[10px] text-muted @md:hidden mt-0.5">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</p>
         </div>
-        <div class="ml-auto flex items-center gap-1.5 md:hidden">
-          <span class="text-[11px] font-medium ${on ? "text-green" : "text-muted"}">${f.state}</span>
+        <div class="ml-auto flex items-center gap-1.5 @md:hidden @3xl:hidden">
+          <span class="text-[10px] font-medium ${on ? "text-green" : "text-muted"}">${f.state}</span>
         </div>
       </div>
 
-      <span class="hidden md:block truncate font-mono text-[12px] text-secondary">${esc(f.defaultVariant)}</span>
-      <span class="hidden md:block font-mono text-[12px] text-muted">${variantCount(f.variants)}</span>
-      <span class="hidden md:block">
+      <span class="hidden @3xl:block truncate font-mono text-[12px] text-secondary">${esc(f.defaultVariant)}</span>
+      <span class="hidden @3xl:block font-mono text-[12px] text-muted">${variantCount(f.variants)}</span>
+      <span class="hidden @3xl:block">
         ${targeting ? `<span class="inline-flex items-center gap-1.5 text-[12px] text-secondary" title="Has targeting rules"><span class="size-2.5 rounded-full bg-blue"></span>targeted</span>` : '<span class="text-[12px] text-muted/60">—</span>'}
       </span>
-      <span class="hidden md:block text-[12px] text-muted">${fmtTime(f.updatedAt)}</span>
+      <span class="hidden @3xl:block text-[12px] text-muted">${fmtTime(f.updatedAt)}</span>
 
-      <div class="hidden md:flex justify-end">
+      <div class="hidden @3xl:flex justify-end">
         ${switchHTML(f, on ? "Enabled" : "Disabled")}
       </div>
 
-      <div class="md:hidden flex items-center gap-2 mt-2.5">
+      <div class="@md:hidden @3xl:hidden flex items-center gap-2 mt-2">
         ${switchHTML(f, on ? "Enabled" : "Disabled")}
       </div>
     </div>
-    <div class="md:hidden flex items-center gap-1 px-6 pb-3 -mt-0.5 pl-[44px]">
+    <div class="@md:grid @md:grid-cols-6 @md:gap-2 @3xl:hidden">
+      <div class="p-2 text-[10px] font-medium text-secondary uppercase tracking-wider">Key</div>
+      <div class="p-2 text-[10px] font-medium text-secondary uppercase tracking-wider">${f.state}</div>
+      <div class="p-2 text-[10px] font-medium text-secondary uppercase tracking-wider">${variantCount(f.variants)}</div>
+      <div class="p-2 text-[10px] font-medium text-secondary uppercase tracking-wider">${targeting ? 'Has targeting' : '-'}</div>
+      <div class="p-2 text-[10px] font-medium text-secondary uppercase tracking-wider">${fmtTime(f.updatedAt)}</div>
+      <div class="p-2"></div>
+    </div>
+    <div class="@3xl:hidden flex items-center gap-1 px-6 pb-3 -mt-0.5 pl-[44px]">
       <button data-act="edit" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
       <button data-act="delMobile" class="btn-ghost h-8 px-2.5 gap-1 text-[12px] font-medium focus-ring hover:text-red"><i class="ph ph-trash text-sm"></i> Delete</button>
     </div>
-    <div class="hidden md:flex items-center gap-0.5 px-6 pb-3 justify-end">
+    <div class="hidden @3xl:flex items-center gap-0.5 px-6 pb-3 justify-end">
       <button data-act="edit" class="btn-ghost h-8 w-8 focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
       <span class="relative">
         <button data-act="delete" class="btn-ghost h-8 w-8 focus-ring hover:text-red" aria-label="Delete ${esc(f.key)}"><i class="ph ph-trash text-sm"></i></button>
@@ -430,7 +464,7 @@ function rowHTML(f) {
         </span>
       </span>
     </div>
-  </div>`;
+  </div>`
 }
 
 /* ---------- pagination ---------- */
