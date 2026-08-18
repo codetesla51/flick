@@ -3,7 +3,7 @@ module github.com/codetesla51/flick
 go 1.25.7
 
 require (
-	github.com/codetesla51/phylax v0.3.1
+	github.com/codetesla51/phylax v0.3.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/spf13/cobra v1.10.2
