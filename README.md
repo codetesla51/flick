@@ -111,9 +111,24 @@ DSN resolution: `--dsn` flag → `FLICK_DSN` env → `postgres://postgres:postgr
 flagd start --sources '[{"uri":"localhost:8015","provider":"grpc"}]'
 ```
 
-flagd connects to flick as a gRPC sync source, receives the full config, and stays live-synced. Its evaluation API is on `:8013`.
+flagd connects to flick as a gRPC sync source, receives the full config, and stays live-synced. It opens its evaluation API on `:8013`.
 
-### 4. Manage flags from the terminal
+> [!TIP]
+> flagd's *own* sync service also defaults to port 8015. It's not needed when flick is the source, so if flagd complains the port is taken, relocate it: `flagd start --sync-port 18015 --sources '[{"uri":"localhost:8015","provider":"grpc"}]'`.
+
+### 4. Connect your app
+
+```go
+provider, _ := flagd.NewProvider()          // flagd on localhost:8013
+openfeature.SetProvider(provider)
+client := openfeature.NewClient("my-app")
+
+showBanner, _ := client.BooleanValue(ctx, "show-banner", false, evalCtx)
+```
+
+Your app talks to **flagd, not flick** — standard OpenFeature SDK with the flagd provider. Full examples in [Using it from your app](#using-it-from-your-app-any-language).
+
+### 5. Manage flags from the terminal
 
 ```sh
 flick set show-banner --default-variant on --variants '{"on":true,"off":false}'
@@ -123,6 +138,16 @@ flick delete show-banner
 ```
 
 flagd clients see each change within milliseconds — no restart, no reload.
+
+### What's running where
+
+| Process | Opens | Purpose |
+|---|---|---|
+| `flick serve` | `:8015` | sync gRPC server — **flagd** connects here |
+| `flick serve` | `:8016` | web console — **you** connect here |
+| `flagd` | `:8013` | evaluation gRPC — **your app's SDK** connects here |
+
+Three hops, two long-running processes: **flick** (source of truth) → **flagd** (in-memory evaluator) → **your app**. flick and your app never talk to each other — flagd sits between them, and flick is only involved when a flag *changes*.
 
 ---
 
@@ -190,14 +215,22 @@ enabled, err := client.BooleanValue(
 ## Layout
 
 ```
-cmd/flick/          CLI: init, serve, set, get, list, delete, version (+ dashboard.html)
-flags.go            SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders
-outbox.go           phylax wiring; delivery handler → Hub
-hub.go              pub/sub: Subscribe / Unsubscribe / Publish (drop-on-full)
-sync.go             SyncService: FetchAllFlags + SyncFlags (subscribe-first)
-migrate.go          embedded goose migrations
-db/goose_migrations/  flags + outbox DDL
-gen/flagd/sync/v1/  generated flagd.sync.v1 Go bindings
+flick
+├── cmd/flick/                the CLI (init, serve, set, get, list, delete, version)
+│   ├── main.go               command wiring, version, DSN resolution
+│   ├── init.go               migrations + wal_level check → replication probe
+│   ├── probe.go              end-to-end probe: slot, publication, probe event
+│   ├── serve.go              sync gRPC server + console + outbox consumer
+│   ├── flags_cmd.go          set / get / list / delete
+│   ├── dashboard.go          console: embedded HTML+CSS+JS, /api/flags, /events, /metrics/stream
+│   └── *_test.go             e2e tests (self-migrating via TestMain)
+├── flags.go                  SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders
+├── outbox.go                 phylax wiring; delivery handler → Hub
+├── hub.go                    pub/sub: Subscribe / Unsubscribe / Publish (drop-on-full)
+├── sync.go                   SyncService: FetchAllFlags + SyncFlags (subscribe-first)
+├── migrate.go                embedded goose migrations
+├── db/goose_migrations/      flags + outbox DDL
+└── gen/flagd/sync/v1/        generated flagd.sync.v1 Go bindings
 ```
 
 ## Development
