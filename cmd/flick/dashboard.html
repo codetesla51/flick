@@ -107,29 +107,33 @@ tailwind.config = {
 
   <!-- ============ METRICS STRIP ============ -->
   <section aria-label="Live metrics" class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
-      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
-        Flags <i class="ph ph-flag text-sm"></i>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
+      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-flag text-base"></i></span>
+      <div class="min-w-0">
+        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Flags</div>
+        <div class="font-mono text-xl font-semibold tabular-nums" id="mFlags">–</div>
       </div>
-      <div class="font-mono text-2xl font-semibold tabular-nums" id="mFlags">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
-      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
-        Delivered <i class="ph ph-paper-plane-tilt text-sm"></i>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
+      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-paper-plane-tilt text-base"></i></span>
+      <div class="min-w-0">
+        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Delivered</div>
+        <div class="font-mono text-xl font-semibold tabular-nums" id="mDelivered">–</div>
       </div>
-      <div class="font-mono text-2xl font-semibold tabular-nums" id="mDelivered">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
-      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
-        WAL lag <i class="ph ph-gauge text-sm"></i>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
+      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-gauge text-base"></i></span>
+      <div class="min-w-0">
+        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">WAL lag</div>
+        <div class="font-mono text-xl font-semibold tabular-nums" id="mLag">–</div>
       </div>
-      <div class="font-mono text-2xl font-semibold tabular-nums" id="mLag">–</div>
     </div>
-    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3">
-      <div class="flex items-center justify-between text-[11px] uppercase tracking-wider text-faint font-medium mb-1">
-        Changes <i class="ph ph-lightning text-sm"></i>
+    <div class="rounded-xl border border-line bg-raised shadow-card px-4 py-3 flex items-center gap-3">
+      <span class="h-9 w-9 shrink-0 rounded-lg grid place-items-center bg-accent/10 text-accent"><i class="ph ph-lightning text-base"></i></span>
+      <div class="min-w-0">
+        <div class="text-[11px] uppercase tracking-wider text-faint font-medium">Changes</div>
+        <div class="font-mono text-xl font-semibold tabular-nums" id="mChanges">–</div>
       </div>
-      <div class="font-mono text-2xl font-semibold tabular-nums" id="mChanges">–</div>
     </div>
   </section>
 
@@ -149,6 +153,8 @@ tailwind.config = {
       <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="text-right">State</span>
     </div>
     <div id="flags" class="flex flex-col gap-2"></div>
+
+    <div id="pager" class="flex items-center justify-between gap-3 mt-4"></div>
 
     <div id="empty" class="hidden rounded-xl border border-dashed border-line px-6 py-16 text-center">
       <i class="ph ph-flag text-4xl text-faint/60"></i>
@@ -281,12 +287,14 @@ const refreshFlags = async () => {
 };
 
 /* ---------- render ---------- */
+// API returns variants/targeting/metadata as JSON objects; tolerate the
+// old string form too (CRUD was silently breaking on the string parse).
+const obj = (x) => (typeof x === "string" ? JSON.parse(x) : x || {});
 function variantCount(v) {
-  let n = 0; try { n = Object.keys(JSON.parse(v)).length; } catch (_) {}
-  return n;
+  try { return Object.keys(obj(v)).length; } catch (_) { return 0; }
 }
 function hasTargeting(t) {
-  try { return Object.keys(JSON.parse(t)).length > 0; } catch (_) { return false; }
+  try { return Object.keys(obj(t)).length > 0; } catch (_) { return false; }
 }
 function fmtTime(t) {
   const d = new Date(t);
@@ -300,9 +308,8 @@ const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">
 
 function rowHTML(f) {
   const targeting = hasTargeting(f.targeting);
-  const delBtn = "Del-" + f.key;
   return `
-  <div data-key="${esc(f.key)}" class="group rounded-xl border border-line bg-raised shadow-card hover:border-ink/20 transition-colors"
+  <div data-key="${esc(f.key)}" class="group rounded-xl border border-line bg-raised shadow-card hover:border-ink/25 hover:shadow-md transition-all duration-150"
        style="margin:0">
     <div class="px-4 py-3 md:grid md:grid-cols-[minmax(0,1.5fr)_150px_130px_120px_110px_96px] md:gap-3 md:items-center">
       <div class="flex items-center gap-3 min-w-0">
@@ -326,19 +333,29 @@ function rowHTML(f) {
       <span class="hidden md:block text-xs text-faint">${fmtTime(f.updatedAt)}</span>
 
       <div class="hidden md:flex justify-end">
-        <button data-act="toggle" class="h-8 min-w-[76px] px-2 rounded-full text-xs font-semibold transition-colors focus-ring cursor-pointer
-          ${f.state === "ENABLED" ? "bg-good/15 text-good hover:bg-good/25" : "bg-line/50 text-faint hover:bg-line"}"
-          aria-label="Toggle ${esc(f.key)}">${f.state === "ENABLED" ? "Enabled" : "Disabled"}</button>
+        <button data-act="toggle" role="switch" aria-checked="${f.state === "ENABLED"}" aria-label="Toggle ${esc(f.key)}"
+          class="inline-flex items-center gap-2 h-8 pl-1 pr-3 rounded-full border transition-colors focus-ring cursor-pointer
+          ${f.state === "ENABLED" ? "border-good/40 bg-good/10" : "border-line bg-line/40"}">
+          <span class="relative h-5 w-9 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-good" : "bg-line"}" style="box-shadow:inset 0 1px 2px rgb(0 0 0/.12)">
+            <span class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${f.state === "ENABLED" ? "left-[18px]" : "left-0.5"}" style="box-shadow:0 1px 2px rgb(0 0 0/.2)"></span>
+          </span>
+          <span class="text-xs font-semibold ${f.state === "ENABLED" ? "text-good" : "text-faint"}">${f.state === "ENABLED" ? "Enabled" : "Disabled"}</span>
+        </button>
       </div>
 
       <div class="md:hidden flex items-center gap-2 mt-2">
-        <button data-act="toggle" class="flex-1 h-9 rounded-lg text-xs font-semibold transition-colors focus-ring
-          ${f.state === "ENABLED" ? "bg-good/15 text-good" : "bg-line/50 text-faint"}">${f.state === "ENABLED" ? "Enabled — tap to disable" : "Disabled — tap to enable"}</button>
+        <button data-act="toggle" class="flex items-center justify-center gap-2 flex-1 h-9 rounded-lg text-xs font-semibold transition-colors focus-ring
+          ${f.state === "ENABLED" ? "bg-good/15 text-good" : "bg-line/50 text-faint"}">
+          <span class="relative h-4 w-8 rounded-full transition-colors ${f.state === "ENABLED" ? "bg-good" : "bg-line"}" style="box-shadow:inset 0 1px 2px rgb(0 0 0/.12)">
+            <span class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${f.state === "ENABLED" ? "left-[16px]" : "left-0.5"}" style="box-shadow:0 1px 2px rgb(0 0 0/.2)"></span>
+          </span>
+          ${f.state === "ENABLED" ? "Enabled" : "Disabled"}
+        </button>
       </div>
     </div>
     <div class="md:hidden flex items-center gap-1.5 px-4 pb-3 -mt-1 ml-[44px]">
       <button data-act="edit" class="h-8 px-2.5 rounded-lg text-xs font-medium text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring flex items-center gap-1"><i class="ph ph-pencil-simple text-sm"></i> Edit</button>
-      <button data-act="delete" class="h-8 px-2.5 rounded-lg text-xs font-medium text-bad/80 hover:bg-bad/10 transition-colors focus-ring flex items-center gap-1"><i class="ph ph-trash text-sm"></i> Delete</button>
+      <button data-act="delMobile" class="h-8 px-2.5 rounded-lg text-xs font-medium text-bad/80 hover:bg-bad/10 transition-colors focus-ring flex items-center gap-1"><i class="ph ph-trash text-sm"></i> Delete</button>
     </div>
     <div class="hidden md:flex items-center gap-0.5 px-4 pb-3 justify-end">
       <button data-act="edit" class="h-8 w-8 grid place-items-center rounded-lg text-faint hover:bg-line/50 hover:text-ink transition-colors focus-ring" aria-label="Edit ${esc(f.key)}"><i class="ph ph-pencil-simple text-sm"></i></button>
@@ -353,15 +370,58 @@ function rowHTML(f) {
   </div>`;
 }
 
+/* ---------- pagination ---------- */
+const PAGE_SIZE = 6;
+let page = 1;
+const pagerEl = $("pager");
+
+function renderPager(filtered) {
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (page > pages) page = pages;
+  if (filtered.length <= PAGE_SIZE) { pagerEl.innerHTML = ""; return; }
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, filtered.length);
+  const nums = [];
+  for (let i = 1; i <= pages; i++) {
+    if (pages > 7 && i !== 1 && i !== pages && Math.abs(i - page) > 1) {
+      if (nums[nums.length - 1] !== "…") nums.push("…");
+      continue;
+    }
+    nums.push(i);
+  }
+  const numBtns = nums.map((n) => n === "…"
+    ? `<span class="px-1 text-faint">…</span>`
+    : `<button data-pg="${n}" aria-label="Page ${n}" class="h-7 min-w-7 px-1.5 rounded-md text-xs font-mono focus-ring transition-colors ${n === page ? "bg-ink text-surface" : "text-faint hover:bg-line/60 hover:text-ink"}">${n}</button>`).join("");
+  pagerEl.innerHTML = `
+    <span class="text-[11px] text-faint font-mono">${from}–${to} of ${filtered.length}</span>
+    <div class="flex items-center gap-1">
+      <button data-pg="${page - 1}" ${page === 1 ? "disabled" : ""} aria-label="Previous page"
+        class="h-7 w-7 grid place-items-center rounded-md text-faint hover:bg-line/60 hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-left text-sm"></i></button>
+      ${numBtns}
+      <button data-pg="${page + 1}" ${page === pages ? "disabled" : ""} aria-label="Next page"
+        class="h-7 w-7 grid place-items-center rounded-md text-faint hover:bg-line/60 hover:text-ink transition-colors focus-ring disabled:opacity-35 disabled:hover:bg-transparent"><i class="ph ph-caret-right text-sm"></i></button>
+    </div>`;
+}
+
 function render() {
   emptyEl.classList.toggle("hidden", flags.length > 0);
   $("flagCount").textContent = flags.length ? flags.length + " total" : "";
   const q = searchEl.value.trim().toLowerCase();
   const filtered = q ? flags.filter((f) => f.key.toLowerCase().includes(q)) : flags;
-  listEl.innerHTML = filtered.map(rowHTML).join("") ||
+  const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  listEl.innerHTML = slice.map(rowHTML).join("") ||
     `<div class="rounded-xl border border-dashed border-line px-6 py-10 text-center text-sm text-faint">No flags match “${esc(q)}”</div>`;
   listEl.classList.toggle("hidden", flags.length === 0);
+  renderPager(filtered);
 }
+
+pagerEl.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-pg]");
+  if (!btn || btn.disabled) return;
+  page = Number(btn.dataset.pg);
+  render();
+});
+searchEl.addEventListener("input", () => { page = 1; render(); });
 
 /* ---------- actions ---------- */
 let pendingDelete = null;
@@ -378,6 +438,15 @@ listEl.addEventListener("click", async (e) => {
     if (pendingDelete) pendingDelete.querySelector("[data-confirm]").classList.add("hidden");
     pendingDelete = row;
     row.querySelector("[data-confirm]").classList.remove("hidden");
+    return;
+  }
+  if (act === "delMobile") {
+    if (btn.dataset.armed) return doDelete(key);
+    btn.dataset.armed = "1";
+    btn.classList.add("bg-bad/15");
+    btn.innerHTML = '<i class="ph ph-check text-sm"></i> Delete?';
+    setTimeout(() => render(), 2500);
+    return;
   }
   if (act === "confirmDelete") return doDelete(key);
   if (act === "cancelDelete") {
@@ -399,7 +468,7 @@ async function doToggle(row, key) {
     await api("/api/flags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, state: next, defaultVariant: f.defaultVariant, variants: JSON.parse(f.variants), targeting: JSON.parse(f.targeting), metadata: JSON.parse(f.metadata) }),
+      body: JSON.stringify({ key, state: next, defaultVariant: f.defaultVariant, variants: obj(f.variants), targeting: obj(f.targeting), metadata: obj(f.metadata) }),
     });
   } catch (err) {
     f.state = old; render();
@@ -421,29 +490,34 @@ let editingKey = null;
 let formState = "ENABLED";
 
 function openModal(key) {
-  editingKey = key || null;
-  $("modalTitle").textContent = key ? "Edit flag" : "New flag";
-  $("fKey").readOnly = !!key;
-  $("fKey").classList.toggle("opacity-60", !!key);
-  formState = "ENABLED";
-  if (key) {
-    const f = flags.find((x) => x.key === key);
-    formState = f.state;
-    $("fKey").value = f.key;
-    $("fTargeting").value = JSON.stringify(JSON.parse(f.targeting), null, 2);
-    $("fMetadata").value = JSON.stringify(JSON.parse(f.metadata), null, 2);
-    setVariantRows(Object.entries(JSON.parse(f.variants)));
-  } else {
-    $("fKey").value = "";
-    $("fTargeting").value = "{}";
-    $("fMetadata").value = "{\n  \"owner\": \"platform\"\n}";
-    setVariantRows([["on", true], ["off", false]]);
+  try {
+    editingKey = key || null;
+    $("modalTitle").textContent = key ? "Edit flag" : "New flag";
+    $("fKey").readOnly = !!key;
+    $("fKey").classList.toggle("opacity-60", !!key);
+    formState = "ENABLED";
+    if (key) {
+      const f = flags.find((x) => x.key === key);
+      if (!f) { toast("Flag not found: " + key, "bad"); return; }
+      formState = f.state;
+      $("fKey").value = f.key;
+      $("fTargeting").value = JSON.stringify(obj(f.targeting), null, 2);
+      $("fMetadata").value = JSON.stringify(obj(f.metadata), null, 2);
+      setVariantRows(Object.entries(obj(f.variants)));
+    } else {
+      $("fKey").value = "";
+      $("fTargeting").value = "{}";
+      $("fMetadata").value = "{\n  \"owner\": \"platform\"\n}";
+      setVariantRows([["on", true], ["off", false]]);
+    }
+    paintStateSeg();
+    hideErrors();
+    modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => $("fKey").focus(), 30);
+  } catch (err) {
+    toast("Couldn't open editor: " + err.message, "bad");
   }
-  paintStateSeg();
-  hideErrors();
-  modal.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-  setTimeout(() => $("fKey").focus(), 30);
 }
 function closeModal() {
   modal.classList.add("hidden");
