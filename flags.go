@@ -151,10 +151,7 @@ func marshalFlags(flags map[string]flagdFlag) (string, error) {
 
 func ApplyDelta(current map[string]flagdFlag, payload map[string]any) (map[string]flagdFlag, error) {
 
-	key, ok := payload["key"].(string)
-	if !ok {
-		return current, fmt.Errorf("payload missing or invalid 'key'")
-	}
+	key, keyOk := payload["key"].(string)
 
 	if deleted, ok := payload["deleted"].(bool); ok && deleted {
 		delete(current, key)
@@ -165,7 +162,7 @@ func ApplyDelta(current map[string]flagdFlag, payload map[string]any) (map[strin
 	defaultVariant, variantOK := payload["defaultVariant"].(string)
 	variants, variantsOK := payload["variants"].(map[string]any)
 	targeting, targetingOK := payload["targeting"].(map[string]any)
-	if !stateOK || !variantOK || !variantsOK || !targetingOK {
+	if !stateOK || !variantOK || !variantsOK || !targetingOK || !keyOk {
 		return current, fmt.Errorf("payload for key %q missing or invalid fields: %v", key, payload)
 	}
 
