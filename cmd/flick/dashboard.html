@@ -59,7 +59,7 @@
     font-feature-settings: "liga";
   }
   .mono, .lkey b, .metric-value, .stream-text, .lcell, .pg, .meta, .count,
-  .live-status, .brand b, .brand .brand-sub, .input-mono { font-family: "Geist Mono", ui-monospace, monospace; }
+  .live-status, .brand b, .brand-sub, .input-mono, .mini b { font-family: "Geist Mono", ui-monospace, monospace; }
   button { font: inherit; cursor: pointer; }
   button:disabled { cursor: default; opacity: .4; }
   :focus-visible { outline: 2px solid transparent; box-shadow: var(--ring); }
@@ -76,10 +76,11 @@
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
   }
-  .hdr { max-width: 1180px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 24px; }
-  .brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; color: var(--ink); border-radius: 6px; }
-  .brand b { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
-  .brand .brand-sub { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+  .hdr { max-width: 1180px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 20px; }
+  .brand-name {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--ink);
+  }
   .hdr .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .live-status {
     display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; height: 30px;
@@ -108,10 +109,19 @@
   .btn-primary:hover { background: color-mix(in srgb, var(--ink) 82%, transparent); color: var(--bg); }
   .btn-danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 
+  /* ---- section heads ---- */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .sec { margin-top: 28px; }
+  .sec:first-child { margin-top: 24px; }
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .sec-head .eyebrow { font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .sec-head .count { font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .1em; color: var(--muted); white-space: nowrap; }
+  .sec-head .count.bright { color: var(--ink); }
+
   /* ---- stream strip (signature: the live heartbeat) ---- */
-  .stream { max-width: 1180px; margin: 22px auto 0; padding: 0 24px; }
   .stream-inner {
-    display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 16px;
+    display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 16px;
     background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
     font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px;
   }
@@ -121,13 +131,12 @@
   .stream-note { margin-left: auto; flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
 
   /* ---- metrics: one instrument panel ---- */
-  .metrics { max-width: 1180px; margin: 16px auto 0; padding: 0 24px; }
   .metrics-panel {
     display: grid; grid-template-columns: repeat(2, 1fr);
     background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   }
   @media (min-width: 768px) { .metrics-panel { grid-template-columns: repeat(4, 1fr); } }
-  .metric { padding: 14px 18px 16px; min-width: 0; }
+  .metric { padding: 16px 18px 18px; min-width: 0; }
   .metric:nth-child(odd) { border-right: 1px solid var(--line); }
   .metric:nth-child(n+3) { border-top: 1px solid var(--line); }
   @media (min-width: 768px) {
@@ -141,15 +150,19 @@
   }
   .metric-label i { font-size: 13px; }
   .metric-value {
-    margin-top: 7px; font-size: clamp(34px, 5vw, 44px); font-weight: 600; letter-spacing: -0.03em;
+    margin-top: 8px; font-size: clamp(32px, 4.5vw, 42px); font-weight: 600; letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .mini-strip {
+    display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 12px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px;
+  }
+  .mini { display: flex; align-items: center; gap: 8px; font-family: "Geist Mono", ui-monospace, monospace; }
+  .mini span { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .mini b { font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .mini b.warn { color: var(--yellow); }
 
   /* ---- live graphs ---- */
-  .graphs { max-width: 1180px; margin: 30px auto 0; padding: 0 24px; }
-  .graphs-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
-  .graphs-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-  .graphs-head .count { font-size: 11px; color: var(--muted); }
   .graphs-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
   @media (min-width: 820px) { .graphs-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (min-width: 1100px) { .graphs-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -159,14 +172,27 @@
     font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px;
     text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
   }
-  .ghead .glive { color: var(--accent); font-weight: 500; }
-  .gcard canvas { margin-top: 6px; height: 170px !important; }
+  .ghead .gtitle { display: flex; align-items: center; gap: 8px; }
+  .gdot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 32% 28%, rgb(255 255 255 / .45), transparent 45%) var(--accent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .gdot.amber { background-color: var(--yellow); box-shadow: 0 0 6px color-mix(in srgb, var(--yellow) 50%, transparent); }
+  .gdot.green { background-color: var(--live); box-shadow: 0 0 6px color-mix(in srgb, var(--live) 50%, transparent); }
+  .gcard canvas { margin-top: 8px; height: 170px !important; }
 
-  /* ---- toolbar + ledger list ---- */
-  .flags-wrap { max-width: 1180px; margin: 30px auto 0; padding: 0 24px 72px; }
-  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-  .toolbar h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-  .toolbar .count { font-size: 11px; color: var(--muted); }
+  /* ---- flags toolbar + ledger ---- */
+  .flags-wrap { padding-bottom: 72px; }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filters { display: flex; gap: 4px; background: var(--recessed); border-radius: 9px; padding: 3px; }
+  .flt {
+    height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent;
+    font-size: 12px; font-weight: 500; color: var(--secondary);
+    transition: background-color .12s ease, color .12s ease;
+  }
+  .flt:hover { color: var(--ink); }
+  .flt.on { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
   .searchbox { margin-left: auto; position: relative; }
   .searchbox input {
     height: 36px; width: min(240px, 100%); padding: 0 12px 0 32px;
@@ -179,7 +205,7 @@
 
   .ledger { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; }
   .lhead {
-    display: none; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 160px; gap: 12px;
+    display: none; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 120px 160px; gap: 12px;
     padding: 10px 16px; border-bottom: 1px solid var(--line);
     font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px;
     text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
@@ -195,19 +221,25 @@
   .lrow:hover { background: var(--hover); }
   .lrow:last-child:hover { border-radius: 0 0 10px 10px; }
   @media (min-width: 768px) {
-    .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 160px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
+    .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 120px 160px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
+  }
+  .lrow.flash { animation: rowflash 1.1s ease-out both; }
+  @keyframes rowflash {
+    0% { box-shadow: inset 0 0 0 2px var(--accent); }
+    100% { box-shadow: inset 0 0 0 2px transparent; }
   }
   .lfirst { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-  .dot-on { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 18%, transparent); }
-  .dot-off { background: var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 24%, transparent); }
-  .dot-bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transition: background-color .15s ease, box-shadow .15s ease; }
+  .dot-on { background: radial-gradient(circle at 32% 28%, rgb(255 255 255 / .5), transparent 45%) var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 16%, transparent); }
+  .dot-off { background: radial-gradient(circle at 32% 28%, rgb(255 255 255 / .4), transparent 45%) var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 20%, transparent); }
+  .dot-bad { background: radial-gradient(circle at 32% 28%, rgb(255 255 255 / .4), transparent 45%) var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent); }
   .lkey { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
   .lkey b { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .lsub { font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
   @media (min-width: 768px) { .lsub { display: none; } }
-  .lcell { font-size: 12px; color: var(--secondary); display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lcell { font-size: 12px; color: var(--secondary); display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-variant-numeric: tabular-nums; }
   .lcell-muted { color: var(--muted); }
+  .lcell-right { text-align: right; }
   @media (min-width: 768px) { .lcell { display: block; } }
   .vwrap { position: relative; display: inline-flex; align-items: center; max-width: 100%; }
   .vwrap select {
@@ -233,7 +265,10 @@
     .lswitch .switch { padding: 0; }
   }
   .row-acts { display: none; }
-  @media (min-width: 768px) { .row-acts { display: flex; gap: 2px; } }
+  @media (min-width: 768px) {
+    .row-acts { display: flex; gap: 2px; opacity: 0; transform: translateX(4px); transition: opacity .12s ease, transform .12s ease; }
+    .lrow:hover .row-acts, .lrow:focus-within .row-acts { opacity: 1; transform: translateX(0); }
+  }
   .relative { position: relative; }
   .confirm {
     position: absolute; right: 0; top: 40px; z-index: 20; display: flex; align-items: center; gap: 4px;
@@ -291,21 +326,29 @@
   .empty .hint { margin: 6px auto 0; font-size: 13px; color: var(--secondary); max-width: 440px; }
   .empty .btn { margin-top: 20px; }
 
-  /* ---- modal ---- */
-  .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
-  @media (min-width: 768px) { .modal-backdrop { align-items: center; padding: 24px; } }
-  .modal-scrim { position: absolute; inset: 0; background: rgb(10 12 16 / .45); animation: fade .2s ease; }
-  .dark .modal-scrim { background: rgb(0 0 0 / .6); }
-  .modal-card {
-    position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
-    background: var(--raised); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-pop);
-    animation: rise .25s var(--ease);
+  /* ---- drawer (flag editor) ---- */
+  .drawer-backdrop { position: fixed; inset: 0; z-index: 50; }
+  .drawer-scrim { position: absolute; inset: 0; background: rgb(10 12 16 / .45); animation: fade .2s ease; }
+  .dark .drawer-scrim { background: rgb(0 0 0 / .6); }
+  .drawer-card {
+    position: absolute; top: 0; right: 0; bottom: 0; width: min(600px, 100%);
+    display: flex; flex-direction: column;
+    background: var(--raised); box-shadow: var(--shadow-pop);
+    animation: slidein .28s var(--ease);
   }
-  @media (min-width: 768px) { .modal-card { border-radius: 16px; } }
-  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
-  .modal-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-  .modal-body { padding: 16px 20px 20px; }
-  .field { margin-bottom: 16px; }
+  @keyframes slidein { from { transform: translateX(40px); opacity: 0 } to { transform: none; opacity: 1 } }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px 0; }
+  .drawer-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .drawer-sub { margin-top: 2px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 22px 20px; }
+  .fsec { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 4px; margin-bottom: 14px; }
+  .fsec-label {
+    display: block; margin: -14px -16px 12px; padding: 8px 16px; border-bottom: 1px solid var(--line);
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 10px; }
   .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary); margin-bottom: 6px; }
   .field-label .sub { font-weight: 400; color: var(--muted); }
   .field-sub { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
@@ -319,6 +362,7 @@
   .input:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
   .input::placeholder { color: var(--muted); }
   .input-mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13px; }
+  select.input { appearance: none; -webkit-appearance: none; padding-right: 28px; }
   .ta {
     width: 100%; padding: 10px 12px; resize: vertical;
     background: transparent; border: 1px solid var(--line); border-radius: 8px;
@@ -334,19 +378,25 @@
   }
   .seg button:hover { color: var(--ink); }
   .seg button.on { background: var(--raised); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
-  .vrow { display: flex; gap: 8px; }
+  .vrow { display: flex; gap: 8px; align-items: center; }
   .vrow .input { flex: 1; }
   .vrow .vval { flex: 1.4; }
   details summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
   summary::-webkit-details-marker { display: none; }
   details[open] .chev { transform: rotate(180deg); }
   .chev { transition: transform .15s ease; color: var(--muted); }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+  .drawer-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 14px 22px; border-top: 1px solid var(--line); background: var(--raised);
+  }
 
   /* ---- targeting editor ---- */
+  .tmodes { display: flex; }
   #tRulesWrap, #tSplitWrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .trow { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
+  #tAddRule { margin-top: 8px; align-self: flex-start; }
+  .trow { display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
   .trow .input { height: 36px; }
+  .trow select.input { padding: 0 8px; }
   .tarrow { color: var(--muted); }
   .srow { display: grid; grid-template-columns: minmax(0, 110px) 1fr 52px 64px; gap: 10px; align-items: center; }
   .sname { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -360,27 +410,6 @@
     .srow { grid-template-columns: 80px 1fr 52px 56px; }
   }
 
-  /* ---- targeting editor ---- */
-  #tRulesWrap, #tSplitWrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  #tAddRule { margin-top: 8px; align-self: flex-start; }
-  .trow { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
-  .trow .input { height: 36px; }
-  .trow select.input { padding: 0 8px; }
-  .tarrow { color: var(--muted); }
-  .srow { display: grid; grid-template-columns: minmax(0, 110px) 1fr 52px 64px; gap: 10px; align-items: center; }
-  .sname { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .spct { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--secondary); text-align: right; }
-  .srow input[type="range"] { accent-color: var(--accent); }
-  .s-total { display: flex; align-items: center; gap: 6px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
-  .s-total b { color: var(--ink); font-weight: 500; }
-  .tmodes .seg { display: inline-flex; }
-  @media (max-width: 640px) {
-    .trow { grid-template-columns: 1fr 1fr; }
-    .trow .tarrow { display: none; }
-    .trow .trow-rm { grid-column: 1 / -1; justify-self: end; }
-    .srow { grid-template-columns: 80px 1fr 52px 56px; }
-  }
-
   /* ---- toasts ---- */
   .toasts { position: fixed; top: 74px; right: 16px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
   .toast {
@@ -390,7 +419,6 @@
   }
 
   /* ---- motion ---- */
-  @keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
   @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
   @keyframes toast-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
   @media (prefers-reduced-motion: reduce) {
@@ -407,10 +435,7 @@
 <!-- ============ HEADER ============ -->
 <header class="header">
   <div class="hdr">
-    <a href="/" class="brand">
-      <b>flick</b>
-      <span class="brand-sub">console</span>
-    </a>
+    <span class="brand-name">console</span>
     <div class="right">
       <span id="liveWrap" class="live-status">
         <span class="live-dot"></span>
@@ -426,157 +451,192 @@
   </div>
 </header>
 
-<!-- ============ STREAM STRIP (signature) ============ -->
-<div class="stream">
-  <div class="stream-inner">
-    <i class="ph ph-broadcast stream-ico"></i>
-    <span id="lastEvent" class="stream-text">waiting for events…</span>
-    <span class="stream-note">outbox → flagd</span>
-  </div>
-</div>
+<main class="wrap">
 
-<!-- ============ METRICS (instrument panel) ============ -->
-<section aria-label="Live metrics" class="metrics">
-  <div class="metrics-panel">
-    <div class="metric">
-      <div class="metric-label"><span>Flags</span><i class="ph ph-flag"></i></div>
-      <div class="metric-value" id="mFlags">–</div>
+  <!-- ============ LIVE: stream + metrics + graphs ============ -->
+  <section class="sec" aria-label="Live stream">
+    <div class="sec-head">
+      <span class="eyebrow">Live</span>
+      <span class="rule"></span>
+      <span class="count">/events · /metrics/stream</span>
     </div>
-    <div class="metric">
-      <div class="metric-label"><span>Delivered</span><i class="ph ph-paper-plane-tilt"></i></div>
-      <div class="metric-value" id="mDelivered">–</div>
+    <div class="stream-inner">
+      <i class="ph ph-broadcast stream-ico"></i>
+      <span id="lastEvent" class="stream-text">waiting for events…</span>
+      <span class="stream-note">outbox → flagd</span>
     </div>
-    <div class="metric">
-      <div class="metric-label"><span>WAL lag</span><i class="ph ph-gauge"></i></div>
-      <div class="metric-value" id="mLag">–</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label"><span>Changes</span><i class="ph ph-lightning"></i></div>
-      <div class="metric-value" id="mChanges">–</div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- ============ LIVE GRAPHS ============ -->
-<section class="graphs" aria-label="Live graphs">
-  <div class="graphs-head">
-    <h2>Live graphs</h2>
-    <span class="count">last 60s · /metrics/stream</span>
-  </div>
-  <div class="graphs-grid">
-    <div class="gcard">
-      <div class="ghead"><span>Outbox delivered</span><span class="glive">60s window</span></div>
-      <canvas id="chDelivered" aria-label="Outbox delivered over time"></canvas>
-    </div>
-    <div class="gcard">
-      <div class="ghead"><span>Changes processed</span><span class="glive">60s window</span></div>
-      <canvas id="chChanges" aria-label="Changes processed over time"></canvas>
-    </div>
-    <div class="gcard">
-      <div class="ghead"><span>WAL lag</span><span class="glive">60s window</span></div>
-      <canvas id="chLag" aria-label="WAL lag over time"></canvas>
-    </div>
-  </div>
-</section>
-
-<!-- ============ FLAGS ============ -->
-<section class="flags-wrap">
-  <div class="toolbar">
-    <h2>Flags</h2>
-    <span id="flagCount" class="count"></span>
-    <div class="searchbox">
-      <i class="ph ph-magnifying-glass"></i>
-      <input id="search" type="search" placeholder="Search flags…" autocomplete="off" />
-    </div>
-  </div>
-
-  <div id="listHeader" class="lhead">
-    <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span>Updated</span><span class="right-aligned" style="text-align:right">State</span>
-  </div>
-
-  <div class="ledger">
-    <div id="flags"></div>
-  </div>
-
-  <div id="pager" class="pager"></div>
-
-  <div id="empty" class="empty hidden">
-    <div class="empty-ico"><i class="ph ph-flag"></i></div>
-    <p>No flags yet</p>
-    <p class="hint">Create your first flag and it streams to every connected flagd client within milliseconds.</p>
-    <button id="emptyNew" class="btn btn-primary"><i class="ph ph-plus"></i> Create your first flag</button>
-  </div>
-</section>
-
-<!-- ============ FLAG MODAL ============ -->
-<div id="modalBackdrop" class="modal-backdrop hidden">
-  <div class="modal-scrim" id="modalScrim"></div>
-  <div id="modalCard" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-head">
-      <h2 id="modalTitle">New flag</h2>
-      <button id="modalClose" class="btn btn-icon" aria-label="Close"><i class="ph ph-x"></i></button>
-    </div>
-
-    <form id="flagForm" class="modal-body" novalidate>
-      <div class="field">
-        <label for="fKey" class="field-label">Key</label>
-        <input id="fKey" required class="input input-mono" placeholder="show-banner" autocomplete="off" />
-        <p id="fKeyErr" class="field-err hidden"></p>
+  <section class="sec" aria-label="Live metrics">
+    <div class="metrics-panel">
+      <div class="metric">
+        <div class="metric-label"><span>Flags</span><i class="ph ph-flag"></i></div>
+        <div class="metric-value" id="mFlags">–</div>
       </div>
+      <div class="metric">
+        <div class="metric-label"><span>Delivered</span><i class="ph ph-paper-plane-tilt"></i></div>
+        <div class="metric-value" id="mDelivered">–</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label"><span>WAL lag</span><i class="ph ph-gauge"></i></div>
+        <div class="metric-value" id="mLag">–</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label"><span>Changes</span><i class="ph ph-lightning"></i></div>
+        <div class="metric-value" id="mChanges">–</div>
+      </div>
+    </div>
+    <div class="mini-strip" aria-label="Outbox and replication detail">
+      <span class="mini"><span>Subscribers</span><b id="mSubs">–</b></span>
+      <span class="mini"><span>Dropped</span><b id="mDrop">–</b></span>
+      <span class="mini"><span>Inflight</span><b id="mInf">–</b></span>
+      <span class="mini"><span>Failed</span><b id="mFail">–</b></span>
+    </div>
+  </section>
 
-      <div class="field">
-        <span class="field-label">State</span>
-        <div class="seg">
-          <button type="button" data-state="ENABLED" class="stateSeg">Enabled</button>
-          <button type="button" data-state="DISABLED" class="stateSeg">Disabled</button>
+  <section class="sec" aria-label="Live graphs">
+    <div class="sec-head">
+      <span class="eyebrow">Graphs</span>
+      <span class="rule"></span>
+      <span class="count">last 60s</span>
+    </div>
+    <div class="graphs-grid">
+      <div class="gcard">
+        <div class="ghead"><span class="gtitle"><span class="gdot indigo"></span>Outbox delivered</span><span class="glive">60s</span></div>
+        <canvas id="chDelivered" aria-label="Outbox delivered over time"></canvas>
+      </div>
+      <div class="gcard">
+        <div class="ghead"><span class="gtitle"><span class="gdot amber"></span>Changes processed</span><span class="glive">60s</span></div>
+        <canvas id="chChanges" aria-label="Changes processed over time"></canvas>
+      </div>
+      <div class="gcard">
+        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>WAL lag</span><span class="glive">60s</span></div>
+        <canvas id="chLag" aria-label="WAL lag over time"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLAGS ============ -->
+  <section class="sec flags-wrap" aria-label="Flags">
+    <div class="sec-head">
+      <span class="eyebrow">Flags</span>
+      <span class="rule"></span>
+      <span class="count bright" id="flagCount"></span>
+    </div>
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Filter flags">
+        <button class="flt on" data-flt="all">All</button>
+        <button class="flt" data-flt="enabled">Enabled</button>
+        <button class="flt" data-flt="disabled">Disabled</button>
+        <button class="flt" data-flt="targeted">Targeted</button>
+      </div>
+      <div class="searchbox">
+        <i class="ph ph-magnifying-glass"></i>
+        <input id="search" type="search" placeholder="Search flags…" autocomplete="off" aria-label="Search flags" />
+      </div>
+    </div>
+
+    <div id="listHeader" class="lhead">
+      <span>Flag</span><span>Default</span><span>Variants</span><span>Targeting</span><span style="text-align:right">Updated</span><span style="text-align:right">State</span>
+    </div>
+
+    <div class="ledger">
+      <div id="flags"></div>
+    </div>
+
+    <div id="pager" class="pager"></div>
+
+    <div id="empty" class="empty hidden">
+      <div class="empty-ico"><i class="ph ph-flag"></i></div>
+      <p>No flags yet</p>
+      <p class="hint">Create your first flag and it streams to every connected flagd client within milliseconds.</p>
+      <button id="emptyNew" class="btn btn-primary"><i class="ph ph-plus"></i> Create your first flag</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FLAG DRAWER ============ -->
+<div id="drawerBackdrop" class="drawer-backdrop hidden">
+  <div class="drawer-scrim" id="drawerScrim"></div>
+  <aside id="drawerCard" class="drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawerTitle">New flag</h2>
+        <div id="drawerSub" class="drawer-sub"></div>
+      </div>
+      <button id="drawerClose" class="btn btn-icon" aria-label="Close"><i class="ph ph-x"></i></button>
+    </div>
+
+    <form id="flagForm" class="drawer-body" novalidate>
+      <section class="fsec">
+        <span class="fsec-label">General</span>
+        <div class="field">
+          <label for="fKey" class="field-label">Key</label>
+          <input id="fKey" required class="input input-mono" placeholder="show-banner" autocomplete="off" />
+          <p id="fKeyErr" class="field-err hidden"></p>
         </div>
-      </div>
-
-      <div class="field">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span class="field-label" style="margin-bottom:0">Variants</span>
-          <button type="button" id="addVariant" class="btn"><i class="ph ph-plus"></i> Add variant</button>
+        <div class="field">
+          <span class="field-label">State</span>
+          <div class="seg">
+            <button type="button" data-state="ENABLED" class="stateSeg">Enabled</button>
+            <button type="button" data-state="DISABLED" class="stateSeg">Disabled</button>
+          </div>
         </div>
-        <div id="variantRows" style="display:flex;flex-direction:column;gap:8px"></div>
-        <p id="fVariantsErr" class="field-err hidden"></p>
-      </div>
+      </section>
 
-      <div class="field">
-        <label for="fDefault" class="field-label">Default variant</label>
-        <select id="fDefault" class="input input-mono"></select>
-      </div>
-
-      <div class="field">
-        <span class="field-label">Targeting</span>
-        <div class="seg tmodes">
-          <button type="button" data-tmode="none" class="tseg on">None</button>
-          <button type="button" data-tmode="rules" class="tseg">Rules</button>
-          <button type="button" data-tmode="split" class="tseg">Split</button>
+      <section class="fsec">
+        <span class="fsec-label">Variants</span>
+        <div class="field">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="field-label" style="margin-bottom:0">Values</span>
+            <button type="button" id="addVariant" class="btn"><i class="ph ph-plus"></i> Add variant</button>
+          </div>
+          <div id="variantRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <p id="fVariantsErr" class="field-err hidden"></p>
         </div>
-        <p id="tHint" class="field-sub">No targeting — every evaluation returns the default variant.</p>
-        <div id="tRulesWrap" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
-        <button type="button" id="tAddRule" class="btn hidden" style="margin-top:8px;align-self:flex-start"><i class="ph ph-plus"></i> Add rule</button>
-        <div id="tSplitWrap" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
-        <p id="fTargetErr" class="field-err hidden"></p>
-        <details style="margin-top:12px">
-          <summary class="btn" style="padding:0;height:auto;color:var(--secondary)"><span>raw JSON</span><i class="ph ph-caret-down chev"></i></summary>
-          <textarea id="fTargeting" rows="4" spellcheck="false" class="ta" style="margin-top:8px">{}</textarea>
-        </details>
-      </div>
+        <div class="field">
+          <label for="fDefault" class="field-label">Default variant</label>
+          <select id="fDefault" class="input input-mono"></select>
+        </div>
+      </section>
 
-      <div class="field">
-        <label for="fMetadata" class="field-label">metadata <span class="sub">(JSON)</span></label>
-        <textarea id="fMetadata" rows="2" spellcheck="false" class="ta">{"owner":"platform"}</textarea>
-      </div>
+      <section class="fsec">
+        <span class="fsec-label">Targeting</span>
+        <div class="field">
+          <div class="seg tmodes">
+            <button type="button" data-tmode="none" class="tseg on">None</button>
+            <button type="button" data-tmode="rules" class="tseg">Rules</button>
+            <button type="button" data-tmode="split" class="tseg">Split</button>
+          </div>
+          <p id="tHint" class="field-sub">No targeting — every evaluation returns the default variant.</p>
+          <div id="tRulesWrap" class="hidden"></div>
+          <button type="button" id="tAddRule" class="btn hidden"><i class="ph ph-plus"></i> Add rule</button>
+          <div id="tSplitWrap" class="hidden"></div>
+          <p id="fTargetErr" class="field-err hidden"></p>
+          <details style="margin-top:12px">
+            <summary class="btn" style="padding:0;height:auto;color:var(--secondary)"><span>raw JSON</span><i class="ph ph-caret-down chev"></i></summary>
+            <textarea id="fTargeting" rows="4" spellcheck="false" class="ta" style="margin-top:8px">{}</textarea>
+          </details>
+        </div>
+      </section>
+
+      <section class="fsec">
+        <span class="fsec-label">Metadata</span>
+        <div class="field">
+          <label for="fMetadata" class="field-label">metadata <span class="sub">(JSON)</span></label>
+          <textarea id="fMetadata" rows="2" spellcheck="false" class="ta">{"owner":"platform"}</textarea>
+        </div>
+      </section>
 
       <p id="fFormErr" class="field-err hidden"></p>
-
-      <div class="modal-actions">
-        <button type="button" id="modalCancel" class="btn">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save flag</button>
-      </div>
     </form>
-  </div>
+
+    <div class="drawer-foot">
+      <button type="button" id="drawerCancel" class="btn">Cancel</button>
+      <button type="submit" form="flagForm" class="btn btn-primary">Save flag</button>
+    </div>
+  </aside>
 </div>
 
 <!-- ============ TOASTS ============ -->
@@ -603,6 +663,7 @@ document.getElementById("themeBtn").addEventListener("click", () =>
 /* ---------- state ---------- */
 let flags = [];
 let lastEvent = null;
+let flt = "all";
 
 const $ = (id) => document.getElementById(id);
 const listEl = $("flags"), emptyEl = $("empty"), searchEl = $("search");
@@ -672,13 +733,13 @@ function rowHTML(f) {
       <span class="dot ${on ? "dot-on" : "dot-off"}" aria-hidden="true"></span>
       <div class="lkey">
         <b>${esc(f.key)}</b>
-        <span class="lsub">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)}</span>
+        <span class="lsub">${variantCount(f.variants)} variants · default ${esc(f.defaultVariant)} · ${fmtTime(f.updatedAt)}</span>
       </div>
     </div>
     ${defCell}
     <span class="lcell lcell-muted">${variantCount(f.variants)}</span>
     <span class="lcell">${targeting ? `<span class="chip">targeted</span>` : '<span class="lcell-muted">—</span>'}</span>
-    <span class="lcell lcell-muted">${fmtTime(f.updatedAt)}</span>
+    <span class="lcell lcell-muted lcell-right">${fmtTime(f.updatedAt)}</span>
     <div class="lswitch">
       ${switchHTML(f, on ? "Enabled" : "Disabled")}
       <span class="row-acts">
@@ -732,9 +793,13 @@ function renderPager(filtered) {
 
 function render() {
   emptyEl.classList.toggle("hidden", flags.length > 0);
-  $("flagCount").textContent = flags.length ? flags.length + " total" : "";
   const q = searchEl.value.trim().toLowerCase();
-  const filtered = q ? flags.filter((f) => f.key.toLowerCase().includes(q)) : flags;
+  let filtered = flags;
+  if (q) filtered = filtered.filter((f) => f.key.toLowerCase().includes(q));
+  if (flt === "enabled") filtered = filtered.filter((f) => f.state === "ENABLED");
+  if (flt === "disabled") filtered = filtered.filter((f) => f.state === "DISABLED");
+  if (flt === "targeted") filtered = filtered.filter((f) => hasTargeting(f.targeting));
+  $("flagCount").textContent = flags.length ? flags.length + " total" : "";
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   listEl.innerHTML = slice.map(rowHTML).join("") ||
     `<div class="empty" style="padding:40px 24px"><p class="hint">No flags match “${esc(q)}”</p></div>`;
@@ -749,6 +814,13 @@ pagerEl.addEventListener("click", (e) => {
   render();
 });
 searchEl.addEventListener("input", () => { page = 1; render(); });
+document.querySelectorAll(".flt").forEach((b) =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".flt").forEach((x) => x.classList.toggle("on", x === b));
+    flt = b.dataset.flt;
+    page = 1;
+    render();
+  }));
 
 /* ---------- quick variant switch (change default variant in place) ---------- */
 listEl.addEventListener("change", async (e) => {
@@ -790,7 +862,7 @@ listEl.addEventListener("click", async (e) => {
     const act = btn.dataset.act;
 
     if (act === "toggle") return doToggle(row, key);
-    if (act === "edit") return openModal(key);
+    if (act === "edit") return openDrawer(key);
     if (act === "delete") {
       // Hide any already-open confirm popover.
       if (pendingDelete) pendingDelete.querySelector("[data-confirm]")?.classList.add("hidden");
@@ -848,15 +920,16 @@ async function doDelete(key) {
   } catch (err) { toast("Delete failed: " + err.message, "bad"); }
 }
 
-/* ---------- modal ---------- */
-const modal = $("modalBackdrop");
+/* ---------- drawer ---------- */
+const drawer = $("drawerBackdrop");
 let editingKey = null;
 let formState = "ENABLED";
 
-function openModal(key) {
+function openDrawer(key) {
   try {
     editingKey = key || null;
-    $("modalTitle").textContent = key ? "Edit flag" : "New flag";
+    $("drawerTitle").textContent = key ? "Edit flag" : "New flag";
+    $("drawerSub").textContent = key ? "key · " + key : "create a flag — it streams to every client";
     $("fKey").readOnly = !!key;
     $("fKey").classList.toggle("opacity-60", !!key);
     formState = "ENABLED";
@@ -877,21 +950,26 @@ function openModal(key) {
     }
     paintStateSeg();
     hideErrors();
-    modal.classList.remove("hidden");
+    drawer.classList.remove("hidden");
     document.body.style.overflow = "hidden";
     setTimeout(() => $("fKey").focus(), 30);
   } catch (err) {
     toast("Couldn't open editor: " + err.message, "bad");
   }
 }
-function closeModal() {
-  modal.classList.add("hidden");
+function closeDrawer() {
+  drawer.classList.add("hidden");
   document.body.style.overflow = "";
 }
-$("modalClose").addEventListener("click", closeModal);
-$("modalCancel").addEventListener("click", closeModal);
-$("modalScrim").addEventListener("click", closeModal);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal(); });
+$("drawerClose").addEventListener("click", closeDrawer);
+$("drawerCancel").addEventListener("click", closeDrawer);
+$("drawerScrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !drawer.classList.contains("hidden")) closeDrawer();
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (e.key === "/") { e.preventDefault(); searchEl.focus(); }
+});
 
 function paintStateSeg() {
   document.querySelectorAll(".stateSeg").forEach((b) => {
@@ -949,6 +1027,9 @@ function paintDefaultSelect() {
 
 function hideErrors() {
   ["fKeyErr", "fVariantsErr", "fFormErr", "fTargetErr"].forEach((id) => $(id).classList.add("hidden"));
+}
+function fieldErr(id, msg) {
+  const el = $(id); el.textContent = msg; el.classList.remove("hidden");
 }
 
 /* ---------- targeting editor (flagd JsonLogic) ---------- */
@@ -1161,9 +1242,6 @@ $("fTargeting").addEventListener("input", () => {
     } catch (_) {}
   }, 400);
 });
-function fieldErr(id, msg) {
-  const el = $(id); el.textContent = msg; el.classList.remove("hidden");
-}
 
 $("flagForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1213,7 +1291,7 @@ $("flagForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({ key, state: formState, defaultVariant, variants, targeting, metadata }),
     });
     toast((editingKey ? "Updated " : "Created ") + key);
-    closeModal();
+    closeDrawer();
     await refreshFlags();
   } catch (err) {
     fieldErr("fFormErr", err.message);
@@ -1261,6 +1339,12 @@ evt.onmessage = (msg) => {
       if (raw) p = (typeof raw === "string") ? JSON.parse(raw) : raw;
       if (p.key) {
         $("lastEvent").innerHTML = `<b>#${c.NewRow.id}</b> ${c.Table} · ${esc(p.key)} ${p.deleted ? "deleted" : p.state || "changed"}`;
+        const row = listEl.querySelector(`[data-key="${CSS.escape(p.key)}"]`);
+        if (row) {
+          row.classList.remove("flash");
+          void row.offsetWidth;
+          row.classList.add("flash");
+        }
         scheduleRefresh();
       }
     }
@@ -1353,13 +1437,24 @@ function applyChartTheme() {
   });
 }
 
+const fmtBytes = (b) => b > 0 ? (b / 1024).toFixed(1) + " KB" : "0 B";
+const fmtNum = (n) => {
+  const v = Number(n);
+  if (!isFinite(v)) return "–";
+  return Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1) + "M" : Math.abs(v) >= 1e3 ? (v / 1e3).toFixed(1) + "K" : String(v);
+};
+
 const mstream = new EventSource("/metrics/stream");
 mstream.onmessage = (msg) => {
   try {
     const m = JSON.parse(msg.data);
-    $("mDelivered").textContent = m.outbox_delivered;
-    $("mChanges").textContent = m.changes_processed;
-    $("mLag").textContent = m.replication_lag_bytes > 0 ? (m.replication_lag_bytes / 1024).toFixed(1) + " KB" : "0 B";
+    $("mDelivered").textContent = fmtNum(m.outbox_delivered);
+    $("mChanges").textContent = fmtNum(m.changes_processed);
+    $("mLag").textContent = fmtBytes(m.replication_lag_bytes || 0);
+    $("mSubs").textContent = fmtNum(m.subscribers);
+    $("mDrop").textContent = fmtNum(m.changes_dropped);
+    $("mInf").textContent = fmtNum(m.outbox_inflight);
+    $("mFail").textContent = fmtNum(m.outbox_failed);
 
     hist.labels.push(new Date().toLocaleTimeString([], { hour12: false }));
     hist.delivered.push(Number(m.outbox_delivered));
@@ -1372,8 +1467,8 @@ mstream.onmessage = (msg) => {
   } catch (_) {}
 };
 
-$("newBtn").addEventListener("click", () => openModal(null));
-$("emptyNew").addEventListener("click", () => openModal(null));
+$("newBtn").addEventListener("click", () => openDrawer(null));
+$("emptyNew").addEventListener("click", () => openDrawer(null));
 
 refreshFlags();
 </script>

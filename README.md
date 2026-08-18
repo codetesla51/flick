@@ -186,19 +186,44 @@ Country targeting (only NG users get the `on` variant):
 
 `fractional` weights can be any relative numbers; the A/B example in the demo data is a 50/30/20 split across `v2`/`v3`/`v1`.
 
+The console's visual targeting editor ([see below](#console--live-metrics)) covers a practical operator subset — `in`, `nin`, `==`, `!=`, `exists`, `starts_with`, `ends_with`, `>`, `>=`, `<`, `<=` — plus a raw JSON fallback for anything more exotic.
+
 ## Console & live metrics
 
-`flick serve` runs a web console at `:8016` — a full flag CRUD UI with light/dark themes and live SSE updates (any change from any client re-renders instantly). The UI is a hand-rolled "database instrument" design: a **live stream strip** under the header ticks every outbox event as it flows (`#320 flags · checkout-v2 DISABLED`), metric cells show delivered/change counters in real time, and flags render as a clean ledger list with one-tap state switches.
+`flick serve` runs a web console at `:8016` — flag CRUD, targeting authoring, and live telemetry in one page, with light/dark themes. It's a single embedded HTML page; rebuild flick to pick up UI changes.
 
-- `/` — the console (single embedded HTML page, zero build step)
-- `/api/flags` — GET list · POST create/update · DELETE `/api/flags/{key}`
-- `/metrics/stream` — SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
-- `/events` — SSE: every decoded WAL change, live
+### What it does
+
+- **Live stream** — every outbox event as it flows through (`#320 flags · checkout-v2 DISABLED`), live over SSE.
+- **Metrics** — headline counters for Flags, Delivered, WAL lag, and Changes processed, plus subscribers / dropped / inflight / failed — fed by `/metrics/stream` (in-memory, no DB access).
+- **Graphs** — 60-second rolling history of outbox delivered, changes processed, and WAL lag.
+- **Flags ledger** — list, filter (enabled / disabled / targeted), search, and paginate (6 per page); edit, delete, toggle state, and switch a flag's default variant inline. Any change from any client — CLI, API, another browser — updates the list live via SSE.
+- **Flag editor** — opens on **New flag** or a row's edit action:
+  - **General** — key and state.
+  - **Variants** — a JSON object of `variant → value` (strings, numbers, booleans, nested objects); invalid JSON is rejected inline.
+  - **Targeting** — a visual editor for flagd JsonLogic targeting, three modes:
+    - **Rules** — rows of `field → operator → values → variant`, compiled to `{"if":[…]}` (first match wins, else the default). Operators: `in`, `nin`, `==`, `!=`, `exists`, `starts_with`, `ends_with`, `>`, `>=`, `<`, `<=`.
+    - **Split** — a percentage per variant, bucketed on `targetingKey` (deterministic per user); totals auto-normalize to exactly 100%.
+    - **Raw JSON** — synced both ways with the rules/split views; paste any valid flagd targeting blob and the form repaints, or get an inline error.
+  - **Metadata** — arbitrary JSON stored on the flag definition.
+
+### HTTP API
+
+| Endpoint | What it is |
+|---|---|
+| `/` | the console page (embedded `dashboard.html`) |
+| `GET /api/flags` | list all flags |
+| `POST /api/flags` | create/update a flag (full flag object; the console always sends the complete flag) |
+| `DELETE /api/flags/{key}` | delete a flag |
+| `/metrics/stream` | SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access |
+| `/events` | SSE: every decoded WAL change, live |
 
 ```sh
 open http://localhost:8016          # the console
 curl -sN localhost:8016/metrics/stream
 ```
+
+**Keyboard shortcuts:** `/` focuses search · `Esc` closes the editor.
 
 ## Using it from your app (any language)
 
