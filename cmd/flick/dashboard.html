@@ -28,6 +28,7 @@
     --line: #E2E4DF;
     --accent: #2A4BE0;
     --live: #0FA968;
+    --yellow: #EAB308;
     --danger: #D54444;
     --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
     --shadow-pop: 0 12px 32px -8px rgb(16 21 28 / .18), 0 2px 8px -4px rgb(16 21 28 / .12);
@@ -44,6 +45,7 @@
     --line: #222A36;
     --accent: #6E8BFF;
     --live: #2FBF7B;
+    --yellow: #FACC15;
     --danger: #F06A6A;
     --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
     --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / .5), 0 2px 8px -4px rgb(0 0 0 / .4);
@@ -86,7 +88,7 @@
   }
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
   .live-status.streaming .live-dot { background: var(--live); animation: pulse 2.4s ease-out infinite; }
-  .live-status.reconnecting .live-dot { background: var(--amber, #C97B00); }
+  .live-status.reconnecting .live-dot { background: var(--yellow); }
   @keyframes pulse {
     0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent); }
     70%  { box-shadow: 0 0 0 8px transparent; }
@@ -195,10 +197,10 @@
     .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 150px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
   }
   .lfirst { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot-on { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 18%, transparent); }
-  .dot-off { background: var(--muted); }
-  .dot-bad { background: var(--danger); }
+  .dot-off { background: var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 24%, transparent); }
+  .dot-bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
   .lkey { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
   .lkey b { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .lsub { font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
