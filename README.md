@@ -168,6 +168,24 @@ Three hops, two long-running processes: **flick** (source of truth) → **flagd*
 
 All database commands accept the global `--dsn`.
 
+## Targeting rules
+
+`--targeting` stores arbitrary JSON and passes it through to flagd's flag definition unchanged — so it must be **flagd's targeting schema** (a [JsonLogic-style rule](https://flagd.dev/reference/flag-definitions/)), not a plain attribute map. Supported operators: `if`, `and`, `or`, `==`, `===`, `!=`, `in`, `var`, `fractional`, `starts_with`, `ends_with`, `sem_ver`. A rule whose top-level key isn't an operator evaluates falsy, and the flag silently falls back to its default variant.
+
+Country targeting (only NG users get the `on` variant):
+
+```json
+{ "if": [ { "in": [ { "var": "country" }, ["NG"] ] }, "on", "off" ] }
+```
+
+20% rollout via the `fractional` operator — deterministic per user (bucketed on `targetingKey`), so the same user always gets the same variant:
+
+```json
+{ "fractional": [ { "var": "targetingKey" }, ["on", 20], ["off", 80] ] }
+```
+
+`fractional` weights can be any relative numbers; the A/B example in the demo data is a 50/30/20 split across `v2`/`v3`/`v1`.
+
 ## Console & live metrics
 
 `flick serve` runs a web console at `:8016` — a full flag CRUD UI with light/dark themes and live SSE updates (any change from any client re-renders instantly). The UI is a hand-rolled "database instrument" design: a **live stream strip** under the header ticks every outbox event as it flows (`#320 flags · checkout-v2 DISABLED`), metric cells show delivered/change counters in real time, and flags render as a clean ledger list with one-tap state switches.
