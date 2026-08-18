@@ -290,6 +290,8 @@ The evaluation context is how targeting works: a `country=NG` user gets `checkou
 ## Serve / sync guarantees
 
 - **One contract:** every flag change goes through the outbox pair (`SetFlag` / `DeleteFlag` / `flick set`). Bare `UPDATE flags` SQL is visible only after a client reconnects.
+
+> **Do NOT `UPDATE flags` directly.** If you write to the `flags` table without writing a matching row to the `outbox` table in the same transaction, flagd never sees the change. The outbox is how changes propagate — no outbox event, no sync. Always use `flick set`, the console, or the `SetFlag` / `DeleteFlag` Go functions.
 - **At-least-once:** the replication slot replays undelivered events across restarts — consumers must be idempotent.
 - **Ordered per topic:** outbox events within a topic are delivered strictly in order, so a rapid on/off toggle always converges on the *final* value, never a stale intermediate.
 - **Self-healing:** drop-on-full deltas resolve on reconnect; hard server crashes trigger flagd's own retry + resync.
