@@ -65,3 +65,14 @@ func resolveDSN() string {
 	}
 	return "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
 }
+
+// resolveAddr picks a listen address from flag value, env, or fallback.
+func resolveAddr(flag, env, fallback string) string {
+	if flag != "" {
+		return flag
+	}
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return fallback
+}

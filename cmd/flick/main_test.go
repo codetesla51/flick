@@ -9,18 +9,13 @@ import (
 	"testing"
 
 	"github.com/codetesla51/flick"
-	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // TestMain applies the embedded migrations so the E2E CLI + dashboard tests
 // work against a fresh database (CI spins up a bare postgres service).
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	db, err := sql.Open("pgx", dsn)
+	db, err := sql.Open("pgx", testDSN())
 	if err != nil {
 		log.Fatalf("migrations: open db: %v", err)
 	}
@@ -69,24 +64,13 @@ func TestNewOutboxWiresCDC(t *testing.T) {
 }
 
 func TestCLISetListDeleteE2E(t *testing.T) {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("pool: %v", err)
-	}
-	defer pool.Close()
-
 	const key = "cli_e2e_test"
-	cleanup := func() {
-		pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key)
-		pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key)
-	}
-	cleanup()
-	t.Cleanup(cleanup)
+	pool := setupTestDB(t, key)
+	ctx := context.Background()
+
+	// CLI commands use resolveDSN() which checks the dsn global.
+	dsn = testDSN()
+	t.Cleanup(func() { dsn = "" })
 
 	// set
 	out, err := runCLI("set", key,

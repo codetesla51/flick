@@ -9,18 +9,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // TestMain applies the embedded migrations so the E2E tests work against a
 // fresh database (CI spins up a bare postgres service container).
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	db, err := sql.Open("pgx", dsn)
+	db, err := sql.Open("pgx", testDSN())
 	if err != nil {
 		log.Fatalf("migrations: open db: %v", err)
 	}
@@ -32,35 +27,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestSetFlagE2E(t *testing.T) {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("pool: %v", err)
-	}
-	defer pool.Close()
-
 	const key = "setflag_e2e_test"
-	if _, err := pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key); err != nil {
-		t.Fatalf("cleanup outbox: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key); err != nil {
-		t.Fatalf("cleanup flags: %v", err)
-	}
-	t.Cleanup(func() {
-		pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key)
-		pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key)
-	})
+	pool := setupTestDB(t, key)
+	ctx := context.Background()
 
-	err = SetFlag(ctx, pool, key, "ENABLED", "red",
+	if err := SetFlag(ctx, pool, key, "ENABLED", "red",
 		json.RawMessage(`{"red":25,"blue":75}`),
 		json.RawMessage(`{"country":["NG"]}`),
 		json.RawMessage(`{"owner":"e2e"}`),
-	)
-	if err != nil {
+	); err != nil {
 		t.Fatalf("SetFlag: %v", err)
 	}
 
@@ -106,28 +81,9 @@ func TestSetFlagE2E(t *testing.T) {
 }
 
 func TestDeleteFlagE2E(t *testing.T) {
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("pool: %v", err)
-	}
-	defer pool.Close()
-
 	const key = "deleteflag_e2e_test"
-	if _, err := pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key); err != nil {
-		t.Fatalf("cleanup outbox: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key); err != nil {
-		t.Fatalf("cleanup flags: %v", err)
-	}
-	t.Cleanup(func() {
-		pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key)
-		pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key)
-	})
+	pool := setupTestDB(t, key)
+	ctx := context.Background()
 
 	// create the flag first
 	if err := SetFlag(ctx, pool, key, "ENABLED", "red",

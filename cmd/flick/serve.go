@@ -87,12 +87,7 @@ func runServe(dsn, addr, metrics string) error {
 		errCh <- outbox.Start(ctx)
 	}()
 
-	if metrics == "" {
-		metrics = os.Getenv("FLICK_METRICS_ADDR")
-		if metrics == "" {
-			metrics = ":8016"
-		}
-	}
+	metrics = resolveAddr(metrics, "FLICK_METRICS_ADDR", ":8016")
 	phylaxSrv := outbox.Server()
 	dashSrv := &http.Server{Addr: metrics, Handler: newDashboardMux(pool, phylaxSrv)}
 	go func() {
@@ -103,12 +98,7 @@ func runServe(dsn, addr, metrics string) error {
 	}()
 	defer dashSrv.Shutdown(context.Background())
 
-	if addr == "" {
-		addr = os.Getenv("FLICK_SYNC_ADDR")
-		if addr == "" {
-			addr = ":8015"
-		}
-	}
+	addr = resolveAddr(addr, "FLICK_SYNC_ADDR", ":8015")
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("sync listen: %w", err)

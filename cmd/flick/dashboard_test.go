@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -18,18 +17,12 @@ const apiKey = "dashboard_api_test"
 
 func newTestMux(t *testing.T) http.Handler {
 	t.Helper()
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := pgxpool.New(context.Background(), testDSN())
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
 	t.Cleanup(func() {
-		pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, apiKey)
-		pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, apiKey)
+		cleanupFlag(t, pool, apiKey)
 		pool.Close()
 	})
 	// zero-value Server works, but metrics come from a real provider only at
@@ -153,11 +146,7 @@ func TestDashboardAPICRUD(t *testing.T) {
 
 func newTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("FLICK_DSN")
-	if dsn == "" {
-		dsn = "postgres://us:2@localhost:5432/flick?sslmode=disable"
-	}
-	pool, err := pgxpool.New(context.Background(), dsn)
+	pool, err := pgxpool.New(context.Background(), testDSN())
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}

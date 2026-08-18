@@ -51,6 +51,47 @@ var validFlagdOps = map[string]bool{
 	"var": true, "missing": true, "missing_some": true,
 }
 
+// validateFlagWrite checks that state, defaultVariant, variants, targeting,
+// and metadata are well-formed. Returns the parsed variants map and targeting
+// map (nil for targeting means empty object).
+func validateFlagWrite(state, defaultVariant string, variantsRaw, targetingRaw, metadataRaw json.RawMessage) (variants map[string]any, targeting map[string]any, metadata map[string]any, err error) {
+	if state != "ENABLED" && state != "DISABLED" {
+		return nil, nil, nil, fmt.Errorf("--state must be ENABLED or DISABLED, got %q", state)
+	}
+	if defaultVariant == "" {
+		return nil, nil, nil, fmt.Errorf("--default-variant is required")
+	}
+	// variants
+	if err = json.Unmarshal(variantsRaw, &variants); err != nil {
+		return nil, nil, nil, fmt.Errorf("--variants must be a JSON object {\"on\":true,\"off\":false}, not %s", typeLabel(string(variantsRaw)))
+	}
+	if len(variants) == 0 {
+		return nil, nil, nil, fmt.Errorf("--variants must have at least one variant")
+	}
+	if _, ok := variants[defaultVariant]; !ok {
+		keys := make([]string, 0, len(variants))
+		for k := range variants {
+			keys = append(keys, k)
+		}
+		return nil, nil, nil, fmt.Errorf("--default-variant %q not found in variants (available: %v)", defaultVariant, keys)
+	}
+	// targeting (optional, defaults to {})
+	if len(targetingRaw) == 0 {
+		targetingRaw = json.RawMessage(`{}`)
+	}
+	if err = json.Unmarshal(targetingRaw, &targeting); err != nil {
+		return nil, nil, nil, fmt.Errorf("--targeting must be a JSON object, not %s", typeLabel(string(targetingRaw)))
+	}
+	// metadata (optional, defaults to {})
+	if len(metadataRaw) == 0 {
+		metadataRaw = json.RawMessage(`{}`)
+	}
+	if err = json.Unmarshal(metadataRaw, &metadata); err != nil {
+		return nil, nil, nil, fmt.Errorf("--metadata must be a JSON object, not %s", typeLabel(string(metadataRaw)))
+	}
+	return variants, targeting, metadata, nil
+}
+
 func init() {
 	setCmd.Flags().StringVar(&flagState, "state", "ENABLED", "ENABLED or DISABLED")
 	setCmd.Flags().StringVar(&flagDefaultVariant, "default-variant", "", "variant used when no targeting matches (required)")
@@ -80,72 +121,19 @@ clients see the change within milliseconds.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key := args[0]
 
-		// --- state validation ---
-		if flagState != "ENABLED" && flagState != "DISABLED" {
-			return fmt.Errorf("--state must be ENABLED or DISABLED, got %q", flagState)
-		}
-
-		// --- default-variant required ---
-		if flagDefaultVariant == "" {
-			return fmt.Errorf("--default-variant is required")
-		}
-
-		// --- variants validation ---
-		if !json.Valid([]byte(flagVariants)) {
-			return fmt.Errorf("--variants must be valid JSON, got: %s", flagVariants)
-		}
-		var variantsMap map[string]any
-		if err := json.Unmarshal([]byte(flagVariants), &variantsMap); err != nil {
-			return fmt.Errorf("--variants must be a JSON object {\"on\":true,\"off\":false}, not %s", typeLabel(flagVariants))
-		}
-		if len(variantsMap) == 0 {
-			return fmt.Errorf("--variants must have at least one variant")
-		}
-		if _, ok := variantsMap[flagDefaultVariant]; !ok {
-			keys := make([]string, 0, len(variantsMap))
-			for k := range variantsMap {
-				keys = append(keys, k)
-			}
-			return fmt.Errorf("--default-variant %q not found in variants (available: %v)", flagDefaultVariant, keys)
-		}
-
-		// --- targeting validation ---
-		if !json.Valid([]byte(flagTargeting)) {
-			return fmt.Errorf("--targeting must be valid JSON, got: %s", flagTargeting)
-		}
-		var targetingRaw any
-		if err := json.Unmarshal([]byte(flagTargeting), &targetingRaw); err != nil {
-			return fmt.Errorf("--targeting must be a JSON object, not %s", typeLabel(flagTargeting))
-		}
-		if targetingRaw != nil {
-			if _, ok := targetingRaw.(map[string]any); !ok {
-				return fmt.Errorf("--targeting must be a JSON object {\"if\":[...]}, not %s", typeLabel(flagTargeting))
-			}
+		_, targeting, metadata, err := validateFlagWrite(flagState, flagDefaultVariant,
+			json.RawMessage(flagVariants), json.RawMessage(flagTargeting), json.RawMessage(flagMetadata))
+		if err != nil {
+			return err
 		}
 
 		// --- targeting operator warning ---
-		if tm, ok := targetingRaw.(map[string]any); ok {
-			for k := range tm {
-				if !validFlagdOps[k] {
-					fmt.Fprintf(cmd.ErrOrStderr(), "warning: %q is not a flagd operator — flagd uses JsonLogic rules, not attribute maps\n", k)
-					fmt.Fprintf(cmd.ErrOrStderr(), "  correct: --targeting '{\"if\":[{\"in\":[{\"var\":\"country\"},[\"NG\"]]},\"on\"]}'\n")
-					fmt.Fprintf(cmd.ErrOrStderr(), "  not:     --targeting '{\"country\":[\"NG\"]}'\n")
-					break
-				}
-			}
-		}
-
-		// --- metadata validation ---
-		if !json.Valid([]byte(flagMetadata)) {
-			return fmt.Errorf("--metadata must be valid JSON, got: %s", flagMetadata)
-		}
-		var metadataRaw any
-		if err := json.Unmarshal([]byte(flagMetadata), &metadataRaw); err != nil {
-			return fmt.Errorf("--metadata must be a JSON object, not %s", typeLabel(flagMetadata))
-		}
-		if metadataRaw != nil {
-			if _, ok := metadataRaw.(map[string]any); !ok {
-				return fmt.Errorf("--metadata must be a JSON object, not %s", typeLabel(flagMetadata))
+		for k := range targeting {
+			if !validFlagdOps[k] {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: %q is not a flagd operator — flagd uses JsonLogic rules, not attribute maps\n", k)
+				fmt.Fprintf(cmd.ErrOrStderr(), "  correct: --targeting '{\"if\":[{\"in\":[{\"var\":\"country\"},[\"NG\"]]},\"on\"]}'\n")
+				fmt.Fprintf(cmd.ErrOrStderr(), "  not:     --targeting '{\"country\":[\"NG\"]}'\n")
+				break
 			}
 		}
 
@@ -156,8 +144,10 @@ clients see the change within milliseconds.
 		}
 		defer pool.Close()
 
+		targetingRaw, _ := json.Marshal(targeting)
+		metadataRaw, _ := json.Marshal(metadata)
 		if err := flick.SetFlag(cmd.Context(), pool, key, flagState, flagDefaultVariant,
-			json.RawMessage(flagVariants), json.RawMessage(flagTargeting), json.RawMessage(flagMetadata)); err != nil {
+			json.RawMessage(flagVariants), targetingRaw, metadataRaw); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "set %s (%s, default %q)\n", key, flagState, flagDefaultVariant)
@@ -213,9 +203,13 @@ var listCmd = &cobra.Command{
 
 		rows, err := pool.Query(cmd.Context(), `
 			SELECT f.key, f.state, f.default_variant, f.variants, f.updated_at,
-			       o.seq IS NOT NULL AS pending
+			       EXISTS (
+			         SELECT 1 FROM outbox o
+			         WHERE o.topic = 'flags'
+			           AND (o.payload->>'key') = f.key
+			           AND o.delivered_at IS NULL
+		       ) AS pending
 			FROM flags f
-			LEFT JOIN outbox o ON o.flag_key = f.key
 			ORDER BY f.key`)
 		if err != nil {
 			return err
@@ -262,6 +256,17 @@ var deleteCmd = &cobra.Command{
 			return err
 		}
 		defer pool.Close()
+
+		// DeleteFlag is a no-op for absent keys; report them as an error so
+		// the CLI matches the dashboard API's 404 behavior.
+		var exists bool
+		if err := pool.QueryRow(cmd.Context(),
+			`SELECT EXISTS (SELECT 1 FROM flags WHERE key=$1)`, key).Scan(&exists); err != nil {
+			return fmt.Errorf("check flag: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("no flag named %q", key)
+		}
 
 		if err := flick.DeleteFlag(cmd.Context(), pool, key); err != nil {
 			return err
@@ -356,8 +361,6 @@ Reads from stdin. Each flag must have "key", "state", "default_variant",
 }
 
 func init() {
-	initCmd.Flags().Bool("with-flags", false, "also seed 3 example flags (maintenance-mode, dark-mode-rollout, banner-message)")
-
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(listCmd)

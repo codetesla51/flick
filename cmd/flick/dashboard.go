@@ -142,40 +142,16 @@ func handleUpsertFlag(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool
 		writeErr(w, http.StatusBadRequest, "key is required")
 		return
 	}
-	if body.State != "ENABLED" && body.State != "DISABLED" {
-		writeErr(w, http.StatusBadRequest, "state must be ENABLED or DISABLED")
+	variants, targeting, metadata, err := validateFlagWrite(body.State, body.DefaultVariant, body.Variants, body.Targeting, body.Metadata)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	var variants map[string]any
-	if err := json.Unmarshal(body.Variants, &variants); err != nil || len(variants) == 0 {
-		writeErr(w, http.StatusBadRequest, "variants must be a non-empty JSON object")
-		return
-	}
-	if body.DefaultVariant == "" {
-		writeErr(w, http.StatusBadRequest, "defaultVariant is required")
-		return
-	}
-	if _, ok := variants[body.DefaultVariant]; !ok {
-		writeErr(w, http.StatusBadRequest, "defaultVariant must be one of the variants")
-		return
-	}
-	if len(body.Targeting) == 0 {
-		body.Targeting = json.RawMessage(`{}`)
-	}
-	if len(body.Metadata) == 0 {
-		body.Metadata = json.RawMessage(`{}`)
-	}
-	var t, m map[string]any
-	if err := json.Unmarshal(body.Targeting, &t); err != nil {
-		writeErr(w, http.StatusBadRequest, "targeting must be a JSON object")
-		return
-	}
-	if err := json.Unmarshal(body.Metadata, &m); err != nil {
-		writeErr(w, http.StatusBadRequest, "metadata must be a JSON object")
-		return
-	}
+	_ = variants // already validated; pass raw JSON to SetFlag
 
-	if err := flick.SetFlag(r.Context(), pool, body.Key, body.State, body.DefaultVariant, body.Variants, body.Targeting, body.Metadata); err != nil {
+	targetingRaw, _ := json.Marshal(targeting)
+	metadataRaw, _ := json.Marshal(metadata)
+	if err := flick.SetFlag(r.Context(), pool, body.Key, body.State, body.DefaultVariant, body.Variants, targetingRaw, metadataRaw); err != nil {
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf("set flag: %v", err))
 		return
 	}
@@ -183,6 +159,8 @@ func handleUpsertFlag(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool
 }
 
 func handleDeleteFlag(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, key string) {
+	// DeleteFlag is a no-op for absent keys (returns nil, no event enqueued).
+	// We need to distinguish 200-ok from 404, so check existence first.
 	var exists bool
 	if err := pool.QueryRow(r.Context(),
 		`SELECT EXISTS (SELECT 1 FROM flags WHERE key=$1)`, key).Scan(&exists); err != nil {
