@@ -158,7 +158,7 @@ clients see the change within milliseconds.
 var getCmd = &cobra.Command{
 	Use:   "get <key>",
 	Short: "Show a single flag",
-	Long:  `Show all fields of one flag: state, default variant, variants, targeting, metadata, last update.`,
+	Long:  `Show all fields of one flag: state, default variant, variants, targeting, metadata.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key := args[0]

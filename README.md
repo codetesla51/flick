@@ -74,7 +74,7 @@ go install github.com/codetesla51/flick/cmd/flick@latest
 ```
 
 > [!NOTE]
-> `@latest` resolves to the newest tagged release. Until the first tag exists, build from a checkout instead: `go run ./cmd/flick` (or `go build -o flick ./cmd/flick`).
+> `@latest` resolves to the newest tagged release (see the Releases page for version history). To build from a checkout instead: `go run ./cmd/flick` (or `go build -o flick ./cmd/flick`).
 
 ---
 
@@ -164,6 +164,8 @@ Three hops, two long-running processes: **flick** (source of truth) → **flagd*
 | `flick get <key>` | Show one flag's full detail |
 | `flick list` | Table of all flags + pending outbox count |
 | `flick delete <key>` | Delete a flag (absent keys are an error) |
+| `flick export` | Export every flag as pretty-printed JSON (backups, migrations) |
+| `flick import` | Import flags from a JSON array on stdin, as produced by `flick export` |
 | `flick version` | Print version (settable via `-ldflags "-X main.version=..."`) |
 
 All database commands accept the global `--dsn`.
@@ -325,18 +327,18 @@ The evaluation context is how targeting works: a `country=NG` user gets `checkou
 
 **In scope:** Postgres-backed flag storage with transactional eventing, live gRPC sync to flagd, CLI management, a full web console with live metrics, delete support, an end-to-end init probe, and e2e-tested against a real database.
 
-**Out of scope (deliberately):** flag *evaluation* (that's flagd's job), targeting rule authoring, auth/multi-tenancy, and dead-lettering of dropped deltas. The delivery handler fans out to the Hub and logs; the wire format is flagd's full-config-per-message semantics (not minimal diffs).
+**Out of scope (deliberately):** flag *evaluation* and targeting *decisions* (that's flagd's job — flick only stores and ships the rules), auth/multi-tenancy, and dead-lettering of dropped deltas. The delivery handler fans out to the Hub and logs; the wire format is flagd's full-config-per-message semantics (not minimal diffs).
 
 ## Layout
 
 ```
 flick
-├── cmd/flick/                the CLI (init, serve, set, get, list, delete, version)
+├── cmd/flick/                the CLI (init, serve, set, get, list, delete, export, import, version)
 │   ├── main.go               command wiring, version, DSN resolution
 │   ├── init.go               migrations + wal_level check → replication probe
 │   ├── probe.go              end-to-end probe: slot, publication, probe event
 │   ├── serve.go              sync gRPC server + console + outbox consumer
-│   ├── flags_cmd.go          set / get / list / delete
+│   ├── flags_cmd.go          set / get / list / delete / export / import
 │   ├── dashboard.go          console: embedded HTML+CSS+JS, /api/flags, /events, /metrics/stream
 │   └── *_test.go             unit tests; *_e2e_test.go behind `-tags e2e`
 ├── flags.go                  SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders

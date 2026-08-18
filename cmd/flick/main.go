@@ -29,6 +29,8 @@ Commands:
   flick get      show a single flag
   flick list     list all flags
   flick delete   delete a flag
+  flick export   export all flags as JSON
+  flick import   import flags from JSON (stdin)
   flick version  print the version
 
 Every database command accepts --dsn, falling back to the FLICK_DSN
