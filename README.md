@@ -142,6 +142,18 @@ enabled, err := client.BooleanValue(
 )
 ```
 
+## Live metrics & console
+
+`flick serve` also runs an HTTP server (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) with:
+
+- `/metrics/stream` — SSE: an in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access
+- `/events` — SSE: every decoded WAL change, live
+- `/dashboard` — the embedded Phylax Console
+
+```sh
+curl -sN localhost:8016/metrics/stream   # one JSON frame per second
+```
+
 ## Serve / sync guarantees
 
 - **One contract:** every flag change goes through the outbox pair (`SetFlag` / `DeleteFlag` / `flick set`). Bare `UPDATE flags` SQL is visible only after a client reconnects.

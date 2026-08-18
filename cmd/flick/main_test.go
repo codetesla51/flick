@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codetesla51/flick"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,6 +30,20 @@ func TestCLIHelpShowsAllCommands(t *testing.T) {
 		if !strings.Contains(out, c) {
 			t.Errorf("help output missing %q:\n%s", c, out)
 		}
+	}
+}
+
+func TestNewOutboxWiresCDC(t *testing.T) {
+	cdc, err := flick.NewOutbox("postgres://u:p@localhost:5432/db?sslmode=disable", flick.NewHub())
+	if err != nil {
+		t.Fatalf("NewOutbox: %v", err)
+	}
+	if cdc == nil {
+		t.Fatal("NewOutbox returned nil cdc")
+	}
+	// MetricsSnapshot must be safe before Start (all zeros, no panic).
+	if snap := cdc.MetricsSnapshot(); snap.Subscribers != 0 {
+		t.Errorf("pre-start subscribers = %d, want 0", snap.Subscribers)
 	}
 }
 

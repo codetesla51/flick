@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,7 +20,10 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var syncAddr string
+var (
+	syncAddr    string
+	metricsAddr string
+)
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -28,22 +32,25 @@ var serveCmd = &cobra.Command{
 
 Starts the outbox logical-replication consumer and serves
 flagd.sync.v1.FlagSyncService (FetchAllFlags + SyncFlags), so flagd can use
-this address as a "grpc" sync source.
+this address as a "grpc" sync source. Also serves live metrics and the
+Phylax Console on the metrics address.
 
 Example:
   flagd start --sources '[{"uri":"localhost:8015","provider":"grpc"}]'`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runServe(resolveDSN(), syncAddr)
+		return runServe(resolveDSN(), syncAddr, metricsAddr)
 	},
 }
 
 func init() {
 	serveCmd.Flags().StringVar(&syncAddr, "addr", "",
 		"sync gRPC listen address (default: FLICK_SYNC_ADDR env, then :8015)")
+	serveCmd.Flags().StringVar(&metricsAddr, "metrics-addr", "",
+		"metrics/events/console listen address (default: FLICK_METRICS_ADDR env, then :8016)")
 }
 
-func runServe(dsn, addr string) error {
+func runServe(dsn, addr, metrics string) error {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
@@ -72,9 +79,28 @@ func runServe(dsn, addr string) error {
 
 	errCh := make(chan error, 1)
 	hub := flick.NewHub()
+	outbox, err := flick.NewOutbox(dsn, hub)
+	if err != nil {
+		return fmt.Errorf("outbox: %w", err)
+	}
 	go func() {
-		errCh <- flick.RunOutbox(ctx, dsn, hub)
+		errCh <- outbox.Start(ctx)
 	}()
+
+	if metrics == "" {
+		metrics = os.Getenv("FLICK_METRICS_ADDR")
+		if metrics == "" {
+			metrics = ":8016"
+		}
+	}
+	phylaxSrv := outbox.Server()
+	go func() {
+		log.Printf("metrics/events/console on %s (/metrics/stream, /events, /dashboard)", metrics)
+		if err := phylaxSrv.ListenAndServe(metrics); err != nil && err != http.ErrServerClosed {
+			log.Printf("metrics server: %v", err)
+		}
+	}()
+	defer phylaxSrv.Shutdown(context.Background())
 
 	if addr == "" {
 		addr = os.Getenv("FLICK_SYNC_ADDR")
