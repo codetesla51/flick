@@ -163,7 +163,7 @@
   .gcard canvas { margin-top: 6px; height: 170px !important; }
 
   /* ---- toolbar + ledger list ---- */
-  .flags-wrap { max-width: 1180px; margin: 30px auto 0; padding: 0 24px; }
+  .flags-wrap { max-width: 1180px; margin: 30px auto 0; padding: 0 24px 72px; }
   .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   .toolbar h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
   .toolbar .count { font-size: 11px; color: var(--muted); }
@@ -177,14 +177,14 @@
   .searchbox input:focus { outline: 0; border-color: var(--accent); box-shadow: var(--ring); }
   .searchbox i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
 
-  .ledger { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .ledger { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; }
   .lhead {
-    display: none; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 150px; gap: 12px;
+    display: none; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 160px; gap: 12px;
     padding: 10px 16px; border-bottom: 1px solid var(--line);
     font-family: "Geist Mono", ui-monospace, monospace; font-size: 10px;
     text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
   }
-  @media (min-width: 768px) { .lhead { display: grid; } }
+  @media (min-width: 768px) { .lhead { display: grid; position: sticky; top: 60px; z-index: 5; background: var(--raised); } }
 
   .lrow {
     display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
@@ -193,8 +193,9 @@
   }
   .lrow:last-child { border-bottom: 0; }
   .lrow:hover { background: var(--hover); }
+  .lrow:last-child:hover { border-radius: 0 0 10px 10px; }
   @media (min-width: 768px) {
-    .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 150px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
+    .lrow { display: grid; grid-template-columns: minmax(0, 1.6fr) 110px 90px 110px 110px 160px; gap: 12px; align-items: center; padding: 0 16px; height: 60px; flex-wrap: nowrap; }
   }
   .lfirst { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
@@ -226,7 +227,11 @@
   }
   .chip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
   .lswitch { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-  @media (min-width: 768px) { .lswitch { margin-left: 0; justify-content: flex-end; } }
+  @media (min-width: 768px) {
+    .lswitch { margin-left: 0; justify-content: flex-end; }
+    .lswitch .switch > span:last-child { display: none; }
+    .lswitch .switch { padding: 0; }
+  }
   .row-acts { display: none; }
   @media (min-width: 768px) { .row-acts { display: flex; gap: 2px; } }
   .relative { position: relative; }
@@ -236,6 +241,7 @@
     box-shadow: var(--shadow-pop);
   }
   .lacts { display: flex; gap: 6px; width: 100%; }
+  .lacts .btn { flex: 1; }
   @media (min-width: 768px) { .lacts { display: none; } }
 
   /* ---- state switch ---- */
@@ -302,6 +308,7 @@
   .field { margin-bottom: 16px; }
   .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary); margin-bottom: 6px; }
   .field-label .sub { font-weight: 400; color: var(--muted); }
+  .field-sub { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
   .field-err { margin-top: 6px; font-size: 12px; color: var(--danger); }
   .input {
     width: 100%; height: 40px; padding: 0 12px;
@@ -335,6 +342,44 @@
   details[open] .chev { transform: rotate(180deg); }
   .chev { transition: transform .15s ease; color: var(--muted); }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+
+  /* ---- targeting editor ---- */
+  #tRulesWrap, #tSplitWrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .trow { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
+  .trow .input { height: 36px; }
+  .tarrow { color: var(--muted); }
+  .srow { display: grid; grid-template-columns: minmax(0, 110px) 1fr 52px 64px; gap: 10px; align-items: center; }
+  .sname { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spct { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--secondary); text-align: right; }
+  .srow input[type="range"] { accent-color: var(--accent); width: 100%; }
+  .s-total { display: flex; align-items: center; gap: 6px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+  .s-total b { color: var(--ink); font-weight: 500; }
+  @media (max-width: 640px) {
+    .trow { grid-template-columns: 1fr 1fr; }
+    .trow .tarrow { display: none; }
+    .srow { grid-template-columns: 80px 1fr 52px 56px; }
+  }
+
+  /* ---- targeting editor ---- */
+  #tRulesWrap, #tSplitWrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #tAddRule { margin-top: 8px; align-self: flex-start; }
+  .trow { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 8px; align-items: center; }
+  .trow .input { height: 36px; }
+  .trow select.input { padding: 0 8px; }
+  .tarrow { color: var(--muted); }
+  .srow { display: grid; grid-template-columns: minmax(0, 110px) 1fr 52px 64px; gap: 10px; align-items: center; }
+  .sname { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spct { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--secondary); text-align: right; }
+  .srow input[type="range"] { accent-color: var(--accent); }
+  .s-total { display: flex; align-items: center; gap: 6px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+  .s-total b { color: var(--ink); font-weight: 500; }
+  .tmodes .seg { display: inline-flex; }
+  @media (max-width: 640px) {
+    .trow { grid-template-columns: 1fr 1fr; }
+    .trow .tarrow { display: none; }
+    .trow .trow-rm { grid-column: 1 / -1; justify-self: end; }
+    .srow { grid-template-columns: 80px 1fr 52px 56px; }
+  }
 
   /* ---- toasts ---- */
   .toasts { position: fixed; top: 74px; right: 16px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
@@ -501,19 +546,28 @@
         <select id="fDefault" class="input input-mono"></select>
       </div>
 
-      <details>
-        <summary class="btn"><span>Targeting &amp; metadata</span><i class="ph ph-caret-down chev"></i></summary>
-        <div style="margin-top:12px;display:flex;flex-direction:column;gap:14px">
-          <div>
-            <label for="fTargeting" class="field-label">targeting <span class="sub">(JSON)</span></label>
-            <textarea id="fTargeting" rows="3" spellcheck="false" class="ta">{"country":["NG"]}</textarea>
-          </div>
-          <div>
-            <label for="fMetadata" class="field-label">metadata <span class="sub">(JSON)</span></label>
-            <textarea id="fMetadata" rows="2" spellcheck="false" class="ta">{"owner":"platform"}</textarea>
-          </div>
+      <div class="field">
+        <span class="field-label">Targeting</span>
+        <div class="seg tmodes">
+          <button type="button" data-tmode="none" class="tseg on">None</button>
+          <button type="button" data-tmode="rules" class="tseg">Rules</button>
+          <button type="button" data-tmode="split" class="tseg">Split</button>
         </div>
-      </details>
+        <p id="tHint" class="field-sub">No targeting — every evaluation returns the default variant.</p>
+        <div id="tRulesWrap" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" id="tAddRule" class="btn hidden" style="margin-top:8px;align-self:flex-start"><i class="ph ph-plus"></i> Add rule</button>
+        <div id="tSplitWrap" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+        <p id="fTargetErr" class="field-err hidden"></p>
+        <details style="margin-top:12px">
+          <summary class="btn" style="padding:0;height:auto;color:var(--secondary)"><span>raw JSON</span><i class="ph ph-caret-down chev"></i></summary>
+          <textarea id="fTargeting" rows="4" spellcheck="false" class="ta" style="margin-top:8px">{}</textarea>
+        </details>
+      </div>
+
+      <div class="field">
+        <label for="fMetadata" class="field-label">metadata <span class="sub">(JSON)</span></label>
+        <textarea id="fMetadata" rows="2" spellcheck="false" class="ta">{"owner":"platform"}</textarea>
+      </div>
 
       <p id="fFormErr" class="field-err hidden"></p>
 
@@ -811,14 +865,15 @@ function openModal(key) {
       if (!f) { toast("Flag not found: " + key, "bad"); return; }
       formState = f.state;
       $("fKey").value = f.key;
-      $("fTargeting").value = JSON.stringify(obj(f.targeting), null, 2);
       $("fMetadata").value = JSON.stringify(obj(f.metadata), null, 2);
       setVariantRows(Object.entries(obj(f.variants)));
+      initTargetingEditor(obj(f.targeting));
     } else {
       $("fKey").value = "";
       $("fTargeting").value = "{}";
       $("fMetadata").value = "{\n  \"owner\": \"platform\"\n}";
       setVariantRows([["on", true], ["off", false]]);
+      initTargetingEditor({});
     }
     paintStateSeg();
     hideErrors();
@@ -855,7 +910,7 @@ function setVariantRows(pairs) {
 function variantRow(name, value) {
   const div = document.createElement("div");
   div.className = "vrow";
-  const v = typeof value === "string" ? value : JSON.stringify(value);
+  const v = JSON.stringify(value);
   div.innerHTML = `
     <input data-v name spellcheck="false" value="${esc(name)}" placeholder="variant"
       class="input input-mono" />
@@ -888,11 +943,224 @@ function paintDefaultSelect() {
   const names = variantPairs().map(([n]) => n);
   sel.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
   if (names.includes(prev)) sel.value = prev;
+  if (tMode === "rules" && !$("tRulesWrap").classList.contains("hidden")) { paintTRules(); syncTargetJSON(); }
+  if (tMode === "split" && !$("tSplitWrap").classList.contains("hidden")) paintTSplit();
 }
 
 function hideErrors() {
-  ["fKeyErr", "fVariantsErr", "fFormErr"].forEach((id) => $(id).classList.add("hidden"));
+  ["fKeyErr", "fVariantsErr", "fFormErr", "fTargetErr"].forEach((id) => $(id).classList.add("hidden"));
 }
+
+/* ---------- targeting editor (flagd JsonLogic) ---------- */
+const TOPS = ["in", "nin", "==", "!=", "exists", "starts_with", "ends_with", ">", ">=", "<", "<="];
+const TOP_LABELS = {
+  "in": "is in", "nin": "is not in", "==": "equals", "!=": "not equals", "exists": "exists",
+  "starts_with": "starts with", "ends_with": "ends with",
+  ">": ">", ">=": "≥", "<": "<", "<=": "≤",
+};
+let tMode = "none";
+let tRules = [];
+let tSplit = {};
+
+const tSeg = (mode) => document.querySelectorAll(".tseg").forEach((b) => b.classList.toggle("on", b.dataset.tmode === mode));
+function paintTHint() {
+  $("tHint").textContent = tMode === "none" ? "No targeting — every evaluation returns the default variant."
+    : tMode === "rules" ? "If a rule matches, the evaluation returns its variant. First match wins; otherwise the default variant."
+    : "Split evaluations across variants by percentage — weights must add up to 100.";
+}
+function paintTRules() {
+  const wrap = $("tRulesWrap");
+  wrap.innerHTML = "";
+  const names = variantPairs().map(([n]) => n);
+  tRules.forEach((r, i) => {
+    const row = document.createElement("div");
+    row.className = "trow";
+    const opOpts = TOPS.map((o) => `<option value="${o}" ${o === r.op ? "selected" : ""}>${TOP_LABELS[o]}</option>`).join("");
+    const vOpts = names.length
+      ? `<option value="" ${r.variant ? "" : "selected"}>variant…</option>` +
+        names.map((n) => `<option value="${esc(n)}" ${n === r.variant ? "selected" : ""}>${esc(n)}</option>`).join("")
+      : `<option value="" selected>add variants first</option>`;
+    row.innerHTML = `
+      <input class="input input-mono" data-tf spellcheck="false" placeholder="context field" value="${esc(r.field)}" />
+      <select class="input input-mono" data-to>${opOpts}</select>
+      <input class="input input-mono" data-tv spellcheck="false" placeholder="${r.op === "exists" ? "—" : "value(s)"}" value="${esc(r.values)}" ${r.op === "exists" ? "disabled" : ""} />
+      <span class="tarrow">→</span>
+      <select class="input input-mono" data-tg>${vOpts}</select>
+      <button type="button" class="btn btn-icon btn-danger" data-trm aria-label="Remove rule"><i class="ph ph-minus"></i></button>`;
+    row.querySelector("[data-tf]").addEventListener("input", (e) => { r.field = e.target.value; syncTargetJSON(); });
+    row.querySelector("[data-to]").addEventListener("change", (e) => {
+      r.op = e.target.value;
+      const tv = row.querySelector("[data-tv]");
+      tv.disabled = r.op === "exists";
+      tv.placeholder = r.op === "exists" ? "—" : "value(s)";
+      syncTargetJSON();
+    });
+    row.querySelector("[data-tv]").addEventListener("input", (e) => { r.values = e.target.value; syncTargetJSON(); });
+    row.querySelector("[data-tg]").addEventListener("change", (e) => { r.variant = e.target.value; syncTargetJSON(); });
+    row.querySelector("[data-trm]").addEventListener("click", () => { tRules.splice(i, 1); paintTRules(); syncTargetJSON(); });
+    wrap.appendChild(row);
+  });
+}
+function paintTSplit() {
+  const wrap = $("tSplitWrap");
+  wrap.innerHTML = "";
+  const names = variantPairs().map(([n]) => n);
+  if (!names.length) {
+    wrap.innerHTML = `<p class="field-sub" style="margin:0">Add variants above first — split needs at least one variant.</p>`;
+    return;
+  }
+  const total = document.createElement("div");
+  total.className = "s-total";
+  total.innerHTML = `<span>total</span><b data-total>${Object.values(tSplit).reduce((a, b) => a + b, 0)}%</b>`;
+  wrap.appendChild(total);
+  names.forEach((n) => {
+    if (!(n in tSplit)) tSplit[n] = 0;
+    const pct = tSplit[n];
+    const row = document.createElement("div");
+    row.className = "srow";
+    row.innerHTML = `
+      <span class="sname">${esc(n)}</span>
+      <input type="range" min="0" max="100" step="5" value="${pct}" data-ts />
+      <span class="spct" data-tp>${pct}%</span>
+      <input class="input input-mono" type="number" min="0" max="100" step="5" value="${pct}" data-tn />`;
+    const slider = row.querySelector("[data-ts]"), num = row.querySelector("[data-tn]"), pctEl = row.querySelector("[data-tp]");
+    const apply = (val) => {
+      tSplit[n] = Math.max(0, Math.min(100, Math.round(Number(val) || 0)));
+      slider.value = tSplit[n]; num.value = tSplit[n]; pctEl.textContent = tSplit[n] + "%";
+      normalizeSplit();
+      syncTargetJSON();
+    };
+    slider.addEventListener("input", () => apply(slider.value));
+    num.addEventListener("input", () => apply(num.value));
+    wrap.appendChild(row);
+  });
+}
+function normalizeSplit() {
+  const vals = Object.values(tSplit);
+  const total = vals.reduce((a, b) => a + b, 0);
+  if (total === 100) return;
+  if (vals.length === 0 || total === 0) return;
+  const scale = 100 / total;
+  let sum = 0;
+  const keys = Object.keys(tSplit);
+  keys.forEach((k) => { tSplit[k] = Math.round(tSplit[k] * scale); sum += tSplit[k]; });
+  const drift = 100 - sum;
+  if (drift !== 0) tSplit[keys[keys.length - 1]] += drift;
+  const el = $("tSplitWrap").querySelector("[data-total]");
+  if (el) el.textContent = "100%";
+  document.querySelectorAll(".srow").forEach((row) => {
+    const n = row.querySelector(".sname").textContent;
+    if (n in tSplit) {
+      row.querySelector("[data-ts]").value = tSplit[n];
+      row.querySelector("[data-tp]").textContent = tSplit[n] + "%";
+      row.querySelector("[data-tn]").value = tSplit[n];
+    }
+  });
+}
+function paintTargeting() {
+  tSeg(tMode);
+  paintTHint();
+  const rulesOn = tMode === "rules", splitOn = tMode === "split";
+  $("tRulesWrap").classList.toggle("hidden", !rulesOn);
+  $("tAddRule").classList.toggle("hidden", !rulesOn);
+  $("tSplitWrap").classList.toggle("hidden", !splitOn);
+  if (rulesOn) paintTRules();
+  if (splitOn) paintTSplit();
+  syncTargetJSON();
+}
+function syncTargetJSON() {
+  $("fTargeting").value = JSON.stringify(buildTargeting(), null, 2);
+}
+function buildTargeting() {
+  if (tMode === "rules") {
+    const pairs = [];
+    for (const r of tRules) {
+      if (!r.field.trim() || !r.variant) continue;
+      const cond = buildCond(r);
+      if (!cond) continue;
+      pairs.push(cond, r.variant);
+    }
+    return pairs.length ? { if: pairs } : {};
+  }
+  if (tMode === "split") {
+    const entries = Object.entries(tSplit).filter(([, p]) => p > 0);
+    return entries.length ? { fractional: [{ var: "targetingKey" }, ...entries] } : {};
+  }
+  return {};
+}
+const numOrStr = (s) => {
+  const t = String(s).trim();
+  return t !== "" && isFinite(Number(t)) ? Number(t) : t;
+};
+function buildCond(r) {
+  const f = r.field.trim();
+  if (!f) return null;
+  const v = r.values.trim();
+  if (r.op === "exists") return { exists: [{ var: f }] };
+  if (!v) return null;
+  if (r.op === "in" || r.op === "nin") {
+    const list = v.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!list.length) return null;
+    return { [r.op]: [{ var: f }, list] };
+  }
+  return { [r.op]: [{ var: f }, numOrStr(v)] };
+}
+function condToRule(cond) {
+  if (!cond || typeof cond !== "object") return null;
+  const key = Object.keys(cond)[0];
+  if (!TOPS.includes(key)) return null;
+  const args = cond[key];
+  if (!Array.isArray(args) || !args[0] || typeof args[0] !== "object" || typeof args[0].var !== "string") return null;
+  const field = args[0].var;
+  if (key === "exists") return { field, op: key, values: "", variant: "" };
+  if (key === "in" || key === "nin") {
+    if (!Array.isArray(args[1])) return null;
+    return { field, op: key, values: args[1].join(", "), variant: "" };
+  }
+  if (args.length < 2) return null;
+  return { field, op: key, values: String(args[1]), variant: "" };
+}
+function initTargetingEditor(raw) {
+  tMode = "none"; tRules = []; tSplit = {};
+  const t = obj(raw);
+  if (Array.isArray(t.if) && t.if.length % 2 === 0) {
+    const rules = [];
+    let ok = true;
+    for (let i = 0; i < t.if.length; i += 2) {
+      const rule = condToRule(t.if[i]);
+      if (!rule || typeof t.if[i + 1] !== "string") { ok = false; break; }
+      rule.variant = t.if[i + 1];
+      rules.push(rule);
+    }
+    if (ok && rules.length) { tMode = "rules"; tRules = rules; }
+  } else if (Array.isArray(t.fractional) && t.fractional[0] && typeof t.fractional[0] === "object" && t.fractional[0].var) {
+    const split = {};
+    let ok = true;
+    for (let i = 1; i < t.fractional.length; i++) {
+      const p = t.fractional[i];
+      if (!Array.isArray(p) || p.length !== 2 || typeof p[0] !== "string" || typeof p[1] !== "number") { ok = false; break; }
+      split[p[0]] = Math.round(p[1]);
+    }
+    if (ok && Object.keys(split).length) { tMode = "split"; tSplit = split; }
+  }
+  paintTargeting();
+}
+document.querySelectorAll(".tseg").forEach((b) =>
+  b.addEventListener("click", () => { tMode = b.dataset.tmode; paintTargeting(); }));
+$("tAddRule").addEventListener("click", () => {
+  tRules.push({ field: "", op: "in", values: "", variant: "" });
+  paintTRules(); syncTargetJSON();
+});
+let rawTimer = null;
+$("fTargeting").addEventListener("input", () => {
+  clearTimeout(rawTimer);
+  rawTimer = setTimeout(() => {
+    try {
+      const t = JSON.parse($("fTargeting").value || "{}");
+      if (t && typeof t === "object") initTargetingEditor(t);
+    } catch (_) {}
+  }, 400);
+});
 function fieldErr(id, msg) {
   const el = $(id); el.textContent = msg; el.classList.remove("hidden");
 }
@@ -914,6 +1182,17 @@ $("flagForm").addEventListener("submit", async (e) => {
     variants[name] = val;
   }
   let targeting, metadata;
+  if (tMode === "rules") {
+    for (const r of tRules) {
+      if (!r.field.trim()) return fieldErr("fTargetErr", "Every rule needs a context field — e.g. country, env, domain.");
+      if (!r.variant) return fieldErr("fTargetErr", "Every rule needs a variant to serve.");
+      if (r.op !== "exists" && !r.values.trim()) return fieldErr("fTargetErr", `Rule for “${r.field}” needs a value to compare against.`);
+    }
+  }
+  if (tMode === "split") {
+    const total = Object.values(tSplit).reduce((a, b) => a + b, 0);
+    if (total !== 100) return fieldErr("fTargetErr", `Split weights must add up to 100 — currently ${total}.`);
+  }
   try { targeting = JSON.parse($("fTargeting").value || "{}"); } catch (_) {
     return fieldErr("fFormErr", "targeting is not valid JSON.");
   }
