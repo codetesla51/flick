@@ -12,18 +12,6 @@ Your app never talks to flick. It talks to flagd, which evaluates from its own i
 
 ---
 
-## Live demo
-
-No install, no Postgres, no setup — this is the full stack from [Quick start](#quick-start), already running against a real Postgres on a public VM. The storefront reads **nine real flags** through flagd, and flipping one in the console sends it through the entire pipeline — Postgres → outbox → LISTEN/NOTIFY → flagd → back to the page — in under a second:
-
-- **Demo storefront** — https://owner-reliable-closure-interactions.trycloudflare.com
-- **flick console** (manage flags, watch live metrics) — https://attending-crowd-particles-dramatically.trycloudflare.com
-
-> [!WARNING]
-> The demo is served through a Cloudflare **quick tunnel** on a free-tier VM — it is **not permanent**. The URLs are temporary and will change if the tunnel restarts, and the box may be offline at any time. Treat it as a preview: the [Quick start](#quick-start) below runs the same stack on your own machine with stable `localhost` addresses.
-
----
-
 ## Why flick
 
 - **Flags are data.** They live in Postgres — SQL, joins, audit, backups, the same operational muscle you already have. No new platform, no vendor lock-in.
@@ -36,18 +24,6 @@ No install, no Postgres, no setup — this is the full stack from [Quick start](
 ---
 
 ## How it works
-
-```mermaid
-flowchart LR
-    CLI["flick CLI / SetFlag"] -->|"flag + outbox event (1 tx)"| DB[("Postgres<br/>flags + outbox")]
-    DB -->|"trigger fires pg_notify"| Notify["notify stream<br/>LISTEN/NOTIFY"]
-    Notify -->|"reads outbox row, delivers"| Hub{{"Hub<br/>pub/sub"}}
-    Hub -->|"broadcasts deltas"| Sync["SyncService<br/>gRPC :8015<br/>flagd.sync.v1"]
-    Sync <-->|"snapshot + live stream"| Flagd["flagd"]
-    Flagd -->|"evaluates flags"| Users["Your app / users"]
-    style DB fill:#2d4,color:#111
-    style Flagd fill:#49c,color:#fff
-```
 
 **Division of labor:** flick *stores and pushes* config; flagd *evaluates* it. flick never answers "what should this user see?" — only "here's the config."
 
@@ -63,21 +39,6 @@ flowchart LR
 Your app asks flagd → flagd reads **its own in-memory copy** → answer. Zero network, zero database. flick is only involved when something *changes*.
 
 ### Why subscribe-first?
-
-```mermaid
-sequenceDiagram
-    participant C as Client (flagd)
-    participant S as SyncFlags
-    participant H as Hub
-    participant DB as Postgres
-    C->>S: connect (SyncFlags)
-    S->>H: 1. subscribe — tune in NOW
-    Note over S,DB: 2. build snapshot (slow DB read)
-    H--)S: changes arriving here get buffered (not missed)
-    S->>C: 3. send full snapshot
-    S->>C: 4. flush buffered deltas (in order)
-    H--)S: 5. live deltas forwarded instantly
-```
 
 Subscribe **before** the snapshot work: nothing between "started listening" and "snapshot sent" is lost. The Hub uses buffered, drop-on-full channels — a slow subscriber can never stall the stream consumer; a dropped delta self-heals on reconnect with a fresh snapshot.
 
@@ -385,17 +346,6 @@ E2E tests take their database entirely from the `FLICK_DSN` env var — there is
 Until v0.3, flick streamed outbox events with **logical replication** instead of LISTEN/NOTIFY. This section documents that design for readers of older versions or older blog posts.
 
 ### The CDC architecture (v0.1–v0.2)
-
-```mermaid
-flowchart LR
-    CLI["flick CLI / SetFlag"] -->|"flag + outbox event (1 tx)"| DB[("Postgres<br/>flags + outbox")]
-    DB -->|"logical replication (WAL)"| Phylax["phylax (CDC)"]
-    Phylax -->|"delivers outbox rows"| Hub{{"Hub<br/>pub/sub"}}
-    Hub -->|"broadcasts deltas"| Sync["SyncService<br/>gRPC :8015"]
-    Sync <-->|"snapshot + live stream"| Flagd["flagd"]
-    style DB fill:#2d4,color:#111
-    style Flagd fill:#49c,color:#fff
-```
 
 - **Transport:** [phylax](https://github.com/codetesla51/phylax), a logical-replication client, consumed `outbox` inserts from the WAL via the `flick_slot` replication slot and `flick_pub` publication, acked each row (`delivered_at`), and published flag deltas to the Hub.
 - **Requirements:** `wal_level = logical`, a replication slot + publication, the `REPLICATION` privilege, and pg_hba rules permitting replication connections — verified by an end-to-end probe (`flick init`) that created the slot/publication and streamed a probe row to prove delivery.
