@@ -430,8 +430,17 @@
   .srow input[type="range"] { accent-color: var(--accent); width: 100%; }
   .s-total { display: flex; align-items: center; gap: 6px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
   .s-total b { color: var(--ink); font-weight: 500; }
+  /* Kill every possible x-axis overflow on phones/tablets. clip (not hidden)
+     doesn't turn the body into a scroll container, so the sticky header and
+     column header keep sticking. The max-width caps cover any element the
+     viewport-width probe can't reach (drawer internals, etc.). */
+  @media (max-width: 767px) {
+    html, body { overflow-x: clip; }
+    .wrap, .hdr, .ledger, .gcard, .metrics-panel, .mini-strip, .stream-inner,
+    .toolbar, .drawer-card, .drawer-body, img, canvas, table, pre, code,
+    input, select, textarea { max-width: 100%; }
+  }
   @media (max-width: 640px) {
-    html, body { overflow-x: hidden; }
     .wrap { padding: 0 14px; }
     .hdr { padding: 0 14px; gap: 10px; height: auto; min-height: 56px; flex-wrap: wrap; row-gap: 8px; }
     .brand-name { font-size: 11px; }
