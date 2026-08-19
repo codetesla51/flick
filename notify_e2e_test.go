@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -33,7 +32,8 @@ func setupNotifyPool(t *testing.T, key string) *pgxpool.Pool {
 // startLayer runs a NotifyLayer on the scratch notify-test database and
 // returns a cleanup that cancels it and waits for the goroutine to fully
 // stop — a still-running layer would otherwise steal the next test's
-// notifications.
+// notifications. It blocks until the layer's LISTEN has completed, so live
+// deliveries are never raced against a not-yet-listening session.
 func startLayer(t *testing.T, hub *Hub) *NotifyLayer {
 	t.Helper()
 	layer := NewNotifyLayer(notifyTestDSN, hub)
@@ -43,6 +43,11 @@ func startLayer(t *testing.T, hub *Hub) *NotifyLayer {
 		defer close(done)
 		_ = layer.Start(ctx)
 	}()
+	select {
+	case <-layer.Ready():
+	case <-time.After(10 * time.Second):
+		t.Fatal("notify layer did not become ready within 10s")
+	}
 	t.Cleanup(func() {
 		cancel()
 		select {
@@ -52,30 +57,6 @@ func startLayer(t *testing.T, hub *Hub) *NotifyLayer {
 		}
 	})
 	return layer
-}
-
-// waitForListener polls pg_stat_activity until the notify layer's connection
-// is up and idle (LISTEN established), so live-delivery tests don't race
-// layer startup.
-func waitForListener(t *testing.T, ctx context.Context, dsn string) {
-	t.Helper()
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		conn, err := pgx.Connect(ctx, dsn)
-		if err == nil {
-			var n int
-			if err := conn.QueryRow(ctx,
-				`SELECT count(*) FROM pg_stat_activity WHERE application_name = $1 AND state = 'idle'`,
-				notifyAppName,
-			).Scan(&n); err == nil && n > 0 {
-				conn.Close(context.Background())
-				return
-			}
-			conn.Close(context.Background())
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatal("notify layer listener did not come up within 10s")
 }
 
 // awaitEvent reads hub deliveries until one matches pred, ignoring events
@@ -112,7 +93,6 @@ func TestNotifyLayerDeliversLiveEvent(t *testing.T) {
 	defer hub.Unsubscribe(subID)
 
 	_ = startLayer(t, hub)
-	waitForListener(t, ctx, notifyTestDSN)
 
 	if err := SetFlag(ctx, pool, key, "ENABLED", "on",
 		json.RawMessage(`{"on":true,"off":false}`),
@@ -144,7 +124,6 @@ func TestNotifyLayerDeliversDelete(t *testing.T) {
 	defer hub.Unsubscribe(subID)
 
 	_ = startLayer(t, hub)
-	waitForListener(t, ctx, notifyTestDSN)
 
 	if err := DeleteFlag(ctx, pool, key); err != nil {
 		t.Fatalf("DeleteFlag: %v", err)
@@ -158,44 +137,6 @@ func TestNotifyLayerDeliversDelete(t *testing.T) {
 	}
 }
 
-func TestNotifyLayerReplaysPendingOnStart(t *testing.T) {
-	ctx := context.Background()
-	const key = "notify_replay_e2e_test"
-	pool := setupNotifyPool(t, key)
-
-	// A change written while no consumer is running stays pending...
-	var id int64
-	if err := pool.QueryRow(ctx,
-		`INSERT INTO outbox (topic, payload) VALUES ('flags', $1::jsonb) RETURNING id`,
-		`{"key":"`+key+`","state":"ENABLED"}`).Scan(&id); err != nil {
-		t.Fatalf("seed outbox row: %v", err)
-	}
-
-	hub := NewHub()
-	subID, ch := hub.Subscribe()
-	defer hub.Unsubscribe(subID)
-
-	startLayer(t, hub)
-
-	awaitKey(t, ch, key)
-
-	// ...and is marked delivered once replayed (the mark runs just after the
-	// publish, so poll rather than check once).
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		var delivered bool
-		if err := pool.QueryRow(ctx,
-			`SELECT delivered_at IS NOT NULL FROM outbox WHERE id = $1`, id).Scan(&delivered); err != nil {
-			t.Fatalf("check delivered_at: %v", err)
-		}
-		if delivered {
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	t.Fatal("replayed row not marked delivered within 5s")
-}
-
 func TestNotifyLayerMetricsCountDeliveries(t *testing.T) {
 	ctx := context.Background()
 	const key = "notify_metrics_e2e_test"
@@ -206,7 +147,6 @@ func TestNotifyLayerMetricsCountDeliveries(t *testing.T) {
 	defer hub.Unsubscribe(subID)
 
 	layer := startLayer(t, hub)
-	waitForListener(t, ctx, notifyTestDSN)
 
 	if err := SetFlag(ctx, pool, key, "ENABLED", "on",
 		json.RawMessage(`{"on":true}`), json.RawMessage(`{}`), json.RawMessage(`{}`)); err != nil {
@@ -216,10 +156,36 @@ func TestNotifyLayerMetricsCountDeliveries(t *testing.T) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if snap := layer.MetricsSnapshot(); snap.OutboxDelivered >= 1 {
+		if snap := layer.MetricsSnapshot(); snap.Delivered >= 1 {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("metrics never showed a delivery: %+v", layer.MetricsSnapshot())
+}
+
+// TestNotifyLayerDeleteAbsentKeyEmitsNothing: deleting an absent key must
+// not reach consumers at all — DeleteFlag skips the notification when no
+// row was deleted.
+func TestNotifyLayerDeleteAbsentKeyEmitsNothing(t *testing.T) {
+	ctx := context.Background()
+	const key = "notify_absent_delete_e2e_test"
+	pool := setupNotifyPool(t, key)
+
+	hub := NewHub()
+	subID, ch := hub.Subscribe()
+	defer hub.Unsubscribe(subID)
+
+	startLayer(t, hub)
+
+	if err := DeleteFlag(ctx, pool, key); err != nil {
+		t.Fatalf("DeleteFlag absent: %v", err)
+	}
+
+	select {
+	case got := <-ch:
+		t.Fatalf("unexpected delivery for absent-key delete: %v", got)
+	case <-time.After(750 * time.Millisecond):
+		// nothing delivered — correct
+	}
 }

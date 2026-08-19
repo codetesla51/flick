@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,10 +13,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// notifyChannel is the Postgres LISTEN/NOTIFY channel over which outbox
-// events are signalled. The outbox_flags_notify trigger fires
-// pg_notify('flick_flags', id) when a flags outbox row commits; the consumer
-// re-reads the row by id, so the 8 KB NOTIFY payload limit never applies.
+// notifyChannel is the Postgres LISTEN/NOTIFY channel over which flag
+// changes are signalled. SetFlag/DeleteFlag fire pg_notify('flick_flags',
+// payload) inside the write transaction — pg_notify is delivered only when
+// the transaction commits, so the flag write and its push stay atomic.
+// The payload carries just the flag key (plus a deleted marker for deletes);
+// the consumer re-reads the flags row by key, which also sidesteps the
+// 8 KB NOTIFY payload limit.
 const notifyChannel = "flick_flags"
 
 const (
@@ -33,45 +35,40 @@ const (
 	notifyAppName = "flick-notify"
 )
 
-// NotifyEvent is one delivered outbox event, as seen by console subscribers.
+// NotifyEvent is one delivered flag change, as seen by console subscribers.
 type NotifyEvent struct {
-	ID      int64          `json:"id"`
-	Topic   string         `json:"topic"`
 	Payload map[string]any `json:"payload"`
 	Time    time.Time      `json:"time,omitempty"`
 }
 
 // NotifyMetrics mirrors the shape the console /metrics/stream endpoint
-// expects, plus a replayed counter.
+// expects.
 type NotifyMetrics struct {
-	OutboxDelivered  int64 `json:"outbox_delivered"`
-	ChangesProcessed int64 `json:"changes_processed"`
-	Subscribers      int   `json:"subscribers"`
-	ChangesDropped   int64 `json:"changes_dropped"`
-	OutboxInflight   int64 `json:"outbox_inflight"`
-	OutboxFailed     int64 `json:"outbox_failed"`
-	Replayed         int64 `json:"replayed"`
+	Delivered   int64 `json:"delivered"`
+	Changes     int64 `json:"changes"`
+	Subscribers int   `json:"subscribers"`
+	Dropped     int64 `json:"dropped"`
+	Failed      int64 `json:"failed"`
 }
 
-// NotifyLayer streams outbox events to the hub (and the console feed) over
+// NotifyLayer streams flag changes to the hub (and the console feed) over
 // Postgres LISTEN/NOTIFY.
 //
-// Writes keep their existing shape: SetFlag/DeleteFlag insert an outbox row
-// in the same transaction as the flags change, and a trigger fires
-// pg_notify('flick_flags', id) once that transaction commits. The layer
-// listens on the channel, re-reads each row by id, and publishes the flag
-// delta to hub — the same flagEvent shape the logical-replication consumer
-// delivered, so ApplyDelta/SyncFlags are untouched.
+// Writes keep their existing shape: SetFlag/DeleteFlag commit the flags
+// write and a pg_notify('flick_flags', key) in one transaction. The layer
+// listens on the channel, re-reads the flags row by key, and publishes the
+// flag delta to hub — the same payload shape ApplyDelta/SyncFlags expect.
 //
 // Live NOTIFY delivery is at-most-once: a notification sent while the layer
-// is disconnected is lost. Start() therefore first replays outbox rows that
-// were never delivered (delivered_at IS NULL) and marks them delivered, so
-// changes made while flick was down are still pushed to flagd on startup.
-// flagd additionally resyncs a full snapshot whenever a client (re)connects,
-// which bounds staleness regardless of transport.
+// is disconnected is lost. This is fine because flagd resyncs a full
+// snapshot whenever a client (re)connects, which bounds staleness
+// regardless of transport.
 type NotifyLayer struct {
 	dsn string
 	hub *Hub
+
+	ready     chan struct{} // closed once the first LISTEN completes
+	onceReady sync.Once
 
 	mu      sync.Mutex
 	subs    map[int]chan NotifyEvent
@@ -79,15 +76,20 @@ type NotifyLayer struct {
 	recent  []NotifyEvent
 
 	delivered atomic.Int64 // events published to hub
-	replayed  atomic.Int64 // events replayed from pending outbox rows
 	dropped   atomic.Int64 // console subscribers with full buffers
 	failed    atomic.Int64 // connection / decode errors
 }
 
-// NewNotifyLayer returns a layer that streams outbox events to hub over
+// NewNotifyLayer returns a layer that streams flag changes to hub over
 // LISTEN/NOTIFY. It connects lazily in Start.
 func NewNotifyLayer(dsn string, hub *Hub) *NotifyLayer {
-	return &NotifyLayer{dsn: dsn, hub: hub, subs: make(map[int]chan NotifyEvent)}
+	return &NotifyLayer{dsn: dsn, hub: hub, subs: make(map[int]chan NotifyEvent), ready: make(chan struct{})}
+}
+
+// Ready is closed once the layer has completed its first LISTEN, so callers
+// (tests, probes) can wait until live delivery is actually armed.
+func (n *NotifyLayer) Ready() <-chan struct{} {
+	return n.ready
 }
 
 // Start runs the layer until ctx is cancelled, reconnecting with backoff if
@@ -108,8 +110,8 @@ func (n *NotifyLayer) Start(ctx context.Context) error {
 	}
 }
 
-// runOnce connects, LISTENs, replays pending rows, then consumes
-// notifications until the connection drops.
+// runOnce connects, LISTENs, then consumes notifications until the
+// connection drops.
 func (n *NotifyLayer) runOnce(ctx context.Context) error {
 	cfg, err := pgx.ParseConfig(n.dsn)
 	if err != nil {
@@ -122,17 +124,11 @@ func (n *NotifyLayer) runOnce(ctx context.Context) error {
 	}
 	defer conn.Close(context.Background())
 
-	// LISTEN before replaying: after this point any committed row is either
-	// delivered live by its notification or picked up by the replay below
-	// (or both, in the tiny overlap — publishing the same delta twice is
-	// idempotent for flagd, so duplicates are safe and misses are not).
+	log.Printf("notify: connected (pid %d), listening on %s", conn.PgConn().PID(), notifyChannel)
 	if _, err := conn.Exec(ctx, "LISTEN "+notifyChannel); err != nil {
 		return err
 	}
-
-	if err := n.replayPending(ctx, conn); err != nil {
-		log.Printf("notify: replay pending: %v", err)
-	}
+	n.onceReady.Do(func() { close(n.ready) })
 
 	for {
 		notif, err := conn.WaitForNotification(ctx)
@@ -141,88 +137,76 @@ func (n *NotifyLayer) runOnce(ctx context.Context) error {
 		}
 		if err := n.handleNotify(ctx, conn, notif.Payload); err != nil {
 			n.failed.Add(1)
-			log.Printf("notify: handling row %s: %v", notif.Payload, err)
+			log.Printf("notify: handling %q: %v", notif.Payload, err)
 		}
 	}
 }
 
-// replayPending publishes outbox rows that were never delivered and marks
-// them delivered, so changes made while flick was down reach flagd on boot.
-func (n *NotifyLayer) replayPending(ctx context.Context, conn *pgx.Conn) error {
-	rows, err := conn.Query(ctx, `
-		SELECT id, payload FROM outbox
-		WHERE topic = 'flags' AND delivered_at IS NULL
-		ORDER BY id`)
-	if err != nil {
-		return err
+// handleNotify resolves a notification (a flag key, plus a deleted marker
+// for deletes) to a flag delta and delivers it. Set notifications re-read
+// the flags row by key so the delivered payload always reflects committed
+// state; a set notification whose row is already gone (changed then deleted
+// before we read it) is delivered as a delete.
+func (n *NotifyLayer) handleNotify(ctx context.Context, conn *pgx.Conn, raw string) error {
+	var m struct {
+		Key     string `json:"key"`
+		Deleted bool   `json:"deleted"`
 	}
-	defer rows.Close()
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		return fmt.Errorf("bad notification payload %q: %w", raw, err)
+	}
+	if m.Key == "" {
+		return fmt.Errorf("notification payload missing key: %q", raw)
+	}
+
+	if m.Deleted {
+		n.deliver(NotifyEvent{
+			Payload: map[string]any{"key": m.Key, "deleted": true},
+			Time:    time.Now().UTC(),
+		})
+		return nil
+	}
 
 	var (
-		events []NotifyEvent
-		ids    []int64
+		state, defaultVariant string
+		variants, targeting   []byte
 	)
-	for rows.Next() {
-		var (
-			e       NotifyEvent
-			payload []byte
-		)
-		if err := rows.Scan(&e.ID, &payload); err != nil {
-			return err
-		}
-		if err := json.Unmarshal(payload, &e.Payload); err != nil {
-			log.Printf("notify: replay row %d: bad payload: %v", e.ID, err)
-			continue
-		}
-		e.Topic = "flags"
-		e.Time = time.Now().UTC()
-		events = append(events, e)
-		ids = append(ids, e.ID)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	for _, e := range events {
-		n.deliver(e)
-	}
-	if len(ids) > 0 {
-		if _, err := conn.Exec(ctx,
-			`UPDATE outbox SET delivered_at = now() WHERE id = ANY($1) AND delivered_at IS NULL`, ids); err != nil {
-			return err
-		}
-		n.replayed.Add(int64(len(ids)))
-	}
-	return nil
-}
-
-// handleNotify resolves a notification payload (an outbox row id) to its
-// event, delivers it, and marks the row delivered.
-func (n *NotifyLayer) handleNotify(ctx context.Context, conn *pgx.Conn, idStr string) error {
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return fmt.Errorf("bad notification payload %q: %w", idStr, err)
-	}
-	var payload []byte
-	err = conn.QueryRow(ctx, `SELECT payload FROM outbox WHERE id = $1`, id).Scan(&payload)
+	err := conn.QueryRow(ctx,
+		`SELECT state, default_variant, variants::text, targeting::text FROM flags WHERE key = $1`,
+		m.Key,
+	).Scan(&state, &defaultVariant, &variants, &targeting)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("row %d deleted before delivery", id)
+		// Changed then deleted before we re-read it — converge on delete.
+		n.deliver(NotifyEvent{
+			Payload: map[string]any{"key": m.Key, "deleted": true},
+			Time:    time.Now().UTC(),
+		})
+		return nil
 	}
 	if err != nil {
 		return err
 	}
-	var m map[string]any
-	if err := json.Unmarshal(payload, &m); err != nil {
-		return fmt.Errorf("row %d: bad payload: %w", id, err)
-	}
-	n.deliver(NotifyEvent{ID: id, Topic: "flags", Payload: m, Time: time.Now().UTC()})
 
-	// Mark consumed so the row never replays and the console's pending
-	// count stays accurate. Best-effort: delivery already happened.
-	if _, err := conn.Exec(ctx,
-		`UPDATE outbox SET delivered_at = now() WHERE id = $1 AND delivered_at IS NULL`, id); err != nil {
-		log.Printf("notify: mark row %d delivered: %v", id, err)
+	var variantsMap, targetingMap map[string]any
+	_ = json.Unmarshal(variants, &variantsMap)
+	_ = json.Unmarshal(targeting, &targetingMap)
+	if variantsMap == nil {
+		variantsMap = map[string]any{}
 	}
+	if targetingMap == nil {
+		targetingMap = map[string]any{}
+	}
+
+	n.deliver(NotifyEvent{
+		Payload: map[string]any{
+			"key":            m.Key,
+			"state":          state,
+			"defaultVariant": defaultVariant,
+			"variants":       variantsMap,
+			"targeting":      targetingMap,
+		},
+		Time: time.Now().UTC(),
+	})
 	return nil
 }
 
@@ -278,10 +262,9 @@ func (n *NotifyLayer) UnsubscribeEvents(id int) {
 // MetricsSnapshot returns the layer's live counters.
 func (n *NotifyLayer) MetricsSnapshot() NotifyMetrics {
 	return NotifyMetrics{
-		OutboxDelivered:  n.delivered.Load(),
-		ChangesProcessed: n.delivered.Load(),
-		ChangesDropped:   n.dropped.Load(),
-		OutboxFailed:     n.failed.Load(),
-		Replayed:         n.replayed.Load(),
+		Delivered: n.delivered.Load(),
+		Changes:   n.delivered.Load(),
+		Dropped:   n.dropped.Load(),
+		Failed:    n.failed.Load(),
 	}
 }

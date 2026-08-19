@@ -25,7 +25,7 @@ func requireDB(t *testing.T) string {
 }
 
 // setupTestDB creates a pool and registers cleanup to remove the given key
-// from both outbox and flags tables.
+// from the flags table.
 func setupTestDB(t *testing.T, key string) *pgxpool.Pool {
 	t.Helper()
 	pool, err := pgxpool.New(context.Background(), requireDB(t))
@@ -40,10 +40,9 @@ func setupTestDB(t *testing.T, key string) *pgxpool.Pool {
 	return pool
 }
 
-// cleanupFlag removes a flag and its outbox events.
+// cleanupFlag removes a flag.
 func cleanupFlag(t *testing.T, pool *pgxpool.Pool, key string) {
 	t.Helper()
 	ctx := context.Background()
-	pool.Exec(ctx, `DELETE FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key)
 	pool.Exec(ctx, `DELETE FROM flags WHERE key=$1`, key)
 }

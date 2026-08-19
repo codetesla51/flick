@@ -38,7 +38,7 @@ func TestNewNotifyLayerWiresHub(t *testing.T) {
 		t.Fatal("NewNotifyLayer returned nil layer")
 	}
 	// MetricsSnapshot must be safe before Start (all zeros, no panic).
-	if snap := layer.MetricsSnapshot(); snap.OutboxDelivered != 0 || snap.Replayed != 0 {
+	if snap := layer.MetricsSnapshot(); snap.Delivered != 0 || snap.Failed != 0 {
 		t.Errorf("pre-start metrics = %+v, want zeros", snap)
 	}
 	// subscribe/unsubscribe round-trip without a database

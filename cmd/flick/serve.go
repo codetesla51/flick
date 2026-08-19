@@ -30,7 +30,7 @@ var serveCmd = &cobra.Command{
 	Short: "Run the flagd sync gRPC server",
 	Long: `Run the flagd sync gRPC server.
 
-Starts the outbox LISTEN/NOTIFY consumer and serves
+Starts the LISTEN/NOTIFY stream consumer and serves
 flagd.sync.v1.FlagSyncService (FetchAllFlags + SyncFlags), so flagd can use
 this address as a "grpc" sync source. Also serves live metrics and the
 console on the metrics address.

@@ -105,8 +105,8 @@ var setCmd = &cobra.Command{
 	Short: "Create or update a flag",
 	Long: `Create or update a flag.
 
-Writes the flag and its outbox change event in one transaction — flagd
-clients see the change within milliseconds.
+Writes the flag and notifies flagd consumers (pg_notify) in one transaction —
+flagd clients see the change within milliseconds.
 
   --state            ENABLED or DISABLED (default ENABLED)
   --default-variant  the variant used when no targeting matches (required)
@@ -193,7 +193,7 @@ var getCmd = &cobra.Command{
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all flags",
-	Long:  `List every flag: key, state, default variant, variants, last update, and any pending outbox events.`,
+	Long:  `List every flag: key, state, default variant, variants, and last update.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pool, err := pgxpool.New(cmd.Context(), resolveDSN())
 		if err != nil {
@@ -202,33 +202,22 @@ var listCmd = &cobra.Command{
 		defer pool.Close()
 
 		rows, err := pool.Query(cmd.Context(), `
-			SELECT f.key, f.state, f.default_variant, f.variants, f.updated_at,
-			       EXISTS (
-			         SELECT 1 FROM outbox o
-			         WHERE o.topic = 'flags'
-			           AND (o.payload->>'key') = f.key
-			           AND o.delivered_at IS NULL
-		       ) AS pending
-			FROM flags f
-			ORDER BY f.key`)
+			SELECT key, state, default_variant, variants, updated_at
+			FROM flags
+			ORDER BY key`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "KEY\tSTATE\tDEFAULT\tVARIANTS\tUPDATED\tPENDING\n")
+		fmt.Fprintf(w, "KEY\tSTATE\tDEFAULT\tVARIANTS\tUPDATED\n")
 		for rows.Next() {
 			var k, state, def string
 			var variants []byte
 			var updatedAt time.Time
-			var pending bool
-			if err := rows.Scan(&k, &state, &def, &variants, &updatedAt, &pending); err != nil {
+			if err := rows.Scan(&k, &state, &def, &variants, &updatedAt); err != nil {
 				return err
-			}
-			p := ""
-			if pending {
-				p = "*"
 			}
 			// Compact variants for display.
 			var vm map[string]any
@@ -237,7 +226,7 @@ var listCmd = &cobra.Command{
 			if len(vs) > 40 {
 				vs = vs[:37] + "..."
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", k, state, def, vs, updatedAt.Format("15:04:05"), p)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", k, state, def, vs, updatedAt.Format("15:04:05"))
 		}
 		w.Flush()
 		return rows.Err()
@@ -247,7 +236,7 @@ var listCmd = &cobra.Command{
 var deleteCmd = &cobra.Command{
 	Use:   "delete <key>",
 	Short: "Delete a flag",
-	Long:  `Delete a flag and enqueue a delete event in the outbox.`,
+	Long:  `Delete a flag and notify flagd consumers (pg_notify) that it is gone.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key := args[0]

@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/codetesla51/flick"
@@ -15,11 +14,10 @@ var initCmd = &cobra.Command{
 	Short: "Set up the database (migrations + notify probe)",
 	Long: `Set up the database.
 
-Applies the embedded goose migrations (flags + outbox tables), verifies the
-outbox notify trigger is installed, and runs a live LISTEN/NOTIFY probe: it
-listens on a test channel from one connection, sends a notification from a
-second, and confirms delivery — so you know push notifications actually work
-before running flick serve.`,
+Applies the embedded goose migrations (flags table) and runs a live
+LISTEN/NOTIFY probe: it listens on a test channel from one connection,
+sends a notification from a second, and confirms delivery — so you know
+push notifications actually work before running flick serve.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dsn := resolveDSN()
@@ -37,17 +35,6 @@ before running flick serve.`,
 			return fmt.Errorf("migrate: %w", err)
 		}
 		fmt.Println("migrations: up to date")
-
-		var hasTrigger bool
-		if err := db.QueryRowContext(cmd.Context(),
-			`SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'outbox_flags_notify')`,
-		).Scan(&hasTrigger); err != nil {
-			return fmt.Errorf("check notify trigger: %w", err)
-		}
-		if !hasTrigger {
-			return errors.New("outbox_flags_notify trigger missing — the migrate step above should have created it; check migration output")
-		}
-		fmt.Println("outbox notify trigger: present")
 
 		if err := runNotifyProbe(cmd.Context(), dsn); err != nil {
 			return err

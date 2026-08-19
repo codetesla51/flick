@@ -40,7 +40,7 @@ func (s *SyncService) FetchAllFlags(ctx context.Context, _ *syncv1.FetchAllFlags
 }
 
 // SyncFlags streams the flag configuration: an initial snapshot of every flag,
-// then one full-configuration message per live outbox delivery.
+// then one full-configuration message per delivered change.
 //
 // Ordering: subscribe before any snapshot work (nothing is missed while the
 // snapshot is built — events in that window sit buffered), send the snapshot,

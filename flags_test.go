@@ -122,9 +122,10 @@ func TestBuildSnapshotJSONShape(t *testing.T) {
 	}
 }
 
-// outboxPayload decodes a raw outbox payload the same way the notify layer
+// applyPayload decodes a raw change payload the same way the notify layer
+// produces it for ApplyDelta.
 // does (json.Unmarshal into map[string]any).
-func outboxPayload(t *testing.T, raw string) map[string]any {
+func applyPayload(t *testing.T, raw string) map[string]any {
 	t.Helper()
 	var p map[string]any
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
@@ -144,7 +145,7 @@ func TestApplyDelta(t *testing.T) {
 	}
 
 	t.Run("add new flag", func(t *testing.T) {
-		got, err := ApplyDelta(current, outboxPayload(t, `{"key":"banner","state":"ENABLED","defaultVariant":"on","variants":{"on":true,"off":false},"targeting":{}}`))
+		got, err := ApplyDelta(current, applyPayload(t, `{"key":"banner","state":"ENABLED","defaultVariant":"on","variants":{"on":true,"off":false},"targeting":{}}`))
 		if err != nil {
 			t.Fatalf("ApplyDelta add: %v", err)
 		}
@@ -164,7 +165,7 @@ func TestApplyDelta(t *testing.T) {
 	})
 
 	t.Run("update existing flag", func(t *testing.T) {
-		got, err := ApplyDelta(current, outboxPayload(t, `{"key":"existing","state":"DISABLED","defaultVariant":"b","variants":{"a":1,"b":2},"targeting":{}}`))
+		got, err := ApplyDelta(current, applyPayload(t, `{"key":"existing","state":"DISABLED","defaultVariant":"b","variants":{"a":1,"b":2},"targeting":{}}`))
 		if err != nil {
 			t.Fatalf("ApplyDelta update: %v", err)
 		}

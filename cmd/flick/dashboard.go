@@ -93,15 +93,15 @@ func newDashboardMux(pool *pgxpool.Pool, layer *flick.NotifyLayer, hub *flick.Hu
 		handleEventsSSE(w, r, layer)
 	})
 	mux.HandleFunc("/metrics/stream", func(w http.ResponseWriter, r *http.Request) {
-		handleMetricsSSE(w, r, pool, layer, hub)
+		handleMetricsSSE(w, r, layer, hub)
 	})
 
 	return mux
 }
 
-// handleEventsSSE streams outbox insert events in the shape the console
-// expects (phylax's old decode format: Table/Operation/NewRow), fed by the
-// notify layer. New clients get recent history first, then live events.
+// handleEventsSSE streams flag-change events fed by the notify layer in a
+// compact {Table, Operation, NewRow} shape. New clients get recent history
+// first, then live events.
 func handleEventsSSE(w http.ResponseWriter, r *http.Request, layer *flick.NotifyLayer) {
 	fl, ok := w.(http.Flusher)
 	if !ok {
@@ -123,11 +123,15 @@ func handleEventsSSE(w http.ResponseWriter, r *http.Request, layer *flick.Notify
 			if !ok {
 				return
 			}
+			op := "insert"
+			if deleted, _ := e.Payload["deleted"].(bool); deleted {
+				op = "delete"
+			}
 			evt := map[string]any{
-				"Table":     "outbox",
-				"Operation": "insert",
+				"Table":     "flags",
+				"Operation": op,
 				"NewRow": map[string]any{
-					"id":      e.ID,
+					"key":     e.Payload["key"],
 					"payload": e.Payload,
 				},
 			}
@@ -143,9 +147,8 @@ func handleEventsSSE(w http.ResponseWriter, r *http.Request, layer *flick.Notify
 	}
 }
 
-// handleMetricsSSE streams the notify layer's counters plus the pending
-// outbox count every second.
-func handleMetricsSSE(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, layer *flick.NotifyLayer, hub *flick.Hub) {
+// handleMetricsSSE streams the notify layer's counters every second.
+func handleMetricsSSE(w http.ResponseWriter, r *http.Request, layer *flick.NotifyLayer, hub *flick.Hub) {
 	fl, ok := w.(http.Flusher)
 	if !ok {
 		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
@@ -164,11 +167,6 @@ func handleMetricsSSE(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool
 		case <-ticker.C:
 			m := layer.MetricsSnapshot()
 			m.Subscribers = hub.SubscriberCount()
-			var pending int64
-			if err := pool.QueryRow(r.Context(),
-				`SELECT count(*) FROM outbox WHERE delivered_at IS NULL`).Scan(&pending); err == nil {
-				m.OutboxInflight = pending
-			}
 			b, err := json.Marshal(m)
 			if err != nil {
 				return

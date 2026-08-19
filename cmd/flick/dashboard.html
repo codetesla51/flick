@@ -490,7 +490,7 @@
     <div class="stream-inner">
       <i class="ph ph-broadcast stream-ico"></i>
       <span id="lastEvent" class="stream-text">waiting for events…</span>
-      <span class="stream-note">outbox → flagd</span>
+      <span class="stream-note">notify → flagd</span>
     </div>
   </section>
 
@@ -505,7 +505,7 @@
         <div class="metric-value" id="mDelivered">–</div>
       </div>
       <div class="metric">
-        <div class="metric-label"><span>Pending</span><i class="ph ph-gauge"></i></div>
+        <div class="metric-label"><span>Failed</span><i class="ph ph-warning"></i></div>
         <div class="metric-value" id="mLag">–</div>
       </div>
       <div class="metric">
@@ -513,11 +513,9 @@
         <div class="metric-value" id="mChanges">–</div>
       </div>
     </div>
-    <div class="mini-strip" aria-label="Outbox and replication detail">
+    <div class="mini-strip" aria-label="Stream detail">
       <span class="mini"><span>Subscribers</span><b id="mSubs">–</b></span>
       <span class="mini"><span>Dropped</span><b id="mDrop">–</b></span>
-      <span class="mini"><span>Replayed</span><b id="mInf">–</b></span>
-      <span class="mini"><span>Failed</span><b id="mFail">–</b></span>
     </div>
   </section>
 
@@ -537,8 +535,8 @@
         <canvas id="chChanges" aria-label="Changes processed over time"></canvas>
       </div>
       <div class="gcard">
-        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>Pending</span><span class="glive">60s</span></div>
-        <canvas id="chLag" aria-label="Pending outbox events over time"></canvas>
+        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>Failed</span><span class="glive">60s</span></div>
+        <canvas id="chLag" aria-label="Failed events over time"></canvas>
       </div>
     </div>
   </section>
@@ -1360,12 +1358,13 @@ evt.onerror = () => {
 evt.onmessage = (msg) => {
   try {
     const c = JSON.parse(msg.data);
-    if (c.Table === "outbox" && c.Operation === "insert") {
+    if (c.Table === "flags") {
       const raw = c.NewRow && c.NewRow.payload;
       let p = {};
       if (raw) p = (typeof raw === "string") ? JSON.parse(raw) : raw;
       if (p.key) {
-        $("lastEvent").innerHTML = `<b>#${c.NewRow.id}</b> ${c.Table} · ${esc(p.key)} ${p.deleted ? "deleted" : p.state || "changed"}`;
+        const op = c.Operation === "delete" ? "deleted" : (p.state || "changed");
+        $("lastEvent").innerHTML = `<b>${esc(p.key)}</b> ${op}`;
         const row = listEl.querySelector(`[data-key="${CSS.escape(p.key)}"]`);
         if (row) {
           row.classList.remove("flash");
@@ -1380,7 +1379,7 @@ evt.onmessage = (msg) => {
 
 /* ---------- graphs (Chart.js, last 60s of metrics) ---------- */
 const MAX_PTS = 60;
-const hist = { labels: [], delivered: [], changes: [], lag: [] };
+const hist = { labels: [], delivered: [], changes: [], failed: [] };
 
 function chartPalette() {
   const d = isDark();
@@ -1447,7 +1446,7 @@ function makeChart(canvasId, series) {
 const charts = [
   makeChart("chDelivered", "delivered"),
   makeChart("chChanges", "changes"),
-  makeChart("chLag", "lag"),
+  makeChart("chLag", "failed"),
 ];
 
 function applyChartTheme() {
@@ -1475,20 +1474,18 @@ const mstream = new EventSource("/metrics/stream");
 mstream.onmessage = (msg) => {
   try {
     const m = JSON.parse(msg.data);
-    $("mDelivered").textContent = fmtNum(m.outbox_delivered);
-    $("mChanges").textContent = fmtNum(m.changes_processed);
-    $("mLag").textContent = fmtNum(m.outbox_inflight);
+    $("mDelivered").textContent = fmtNum(m.delivered);
+    $("mChanges").textContent = fmtNum(m.changes);
+    $("mLag").textContent = fmtNum(m.failed);
     $("mSubs").textContent = fmtNum(m.subscribers);
-    $("mDrop").textContent = fmtNum(m.changes_dropped);
-    $("mInf").textContent = fmtNum(m.replayed);
-    $("mFail").textContent = fmtNum(m.outbox_failed);
+    $("mDrop").textContent = fmtNum(m.dropped);
 
     hist.labels.push(new Date().toLocaleTimeString([], { hour12: false }));
-    hist.delivered.push(Number(m.outbox_delivered));
-    hist.changes.push(Number(m.changes_processed));
-    hist.lag.push(Number(m.outbox_inflight) || 0);
+    hist.delivered.push(Number(m.delivered));
+    hist.changes.push(Number(m.changes));
+    hist.failed.push(Number(m.failed));
     if (hist.labels.length > MAX_PTS) {
-      hist.labels.shift(); hist.delivered.shift(); hist.changes.shift(); hist.lag.shift();
+      hist.labels.shift(); hist.delivered.shift(); hist.changes.shift(); hist.failed.shift();
     }
     charts.forEach((c) => c.update("none"));
   } catch (_) {}

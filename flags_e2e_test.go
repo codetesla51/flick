@@ -115,22 +115,7 @@ func TestSetFlagE2E(t *testing.T) {
 		t.Errorf("state = %q, want ENABLED", state)
 	}
 
-	// outbox event enqueued with matching payload
-	var payload []byte
-	if err := pool.QueryRow(ctx,
-		`SELECT payload FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key,
-	).Scan(&payload); err != nil {
-		t.Fatalf("outbox row: %v", err)
-	}
-	var evt map[string]any
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		t.Fatalf("decode payload: %v", err)
-	}
-	if evt["key"] != key || evt["defaultVariant"] != "red" || evt["state"] != "ENABLED" {
-		t.Errorf("event payload mismatch: %s", payload)
-	}
-
-	// upsert path: second SetFlag updates flags and enqueues another event
+	// upsert path: second SetFlag updates the row
 	if err := SetFlag(ctx, pool, key, "DISABLED", "blue",
 		json.RawMessage(`{"red":25,"blue":75}`),
 		json.RawMessage(`{}`),
@@ -138,12 +123,11 @@ func TestSetFlagE2E(t *testing.T) {
 	); err != nil {
 		t.Fatalf("SetFlag upsert: %v", err)
 	}
-	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM outbox WHERE topic='flags' AND payload->>'key'=$1`, key).Scan(&n); err != nil {
-		t.Fatalf("count outbox: %v", err)
+	if err := pool.QueryRow(ctx, `SELECT state FROM flags WHERE key=$1`, key).Scan(&state); err != nil {
+		t.Fatalf("flags row after upsert: %v", err)
 	}
-	if n != 2 {
-		t.Errorf("outbox events = %d, want 2", n)
+	if state != "DISABLED" {
+		t.Errorf("state = %q, want DISABLED after upsert", state)
 	}
 }
 
@@ -175,35 +159,14 @@ func TestDeleteFlagE2E(t *testing.T) {
 		t.Errorf("flags rows = %d, want 0 after delete", n)
 	}
 
-	// exactly one outbox event, with deleted:true
-	var payload []byte
-	if err := pool.QueryRow(ctx,
-		`SELECT payload FROM outbox WHERE topic='flags' AND payload->>'key'=$1 AND payload->>'deleted'='true'`, key,
-	).Scan(&payload); err != nil {
-		t.Fatalf("outbox delete event: %v", err)
-	}
-	var evt map[string]any
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		t.Fatalf("decode payload: %v", err)
-	}
-	if evt["key"] != key || evt["deleted"] != true {
-		t.Errorf("delete event payload mismatch: %s", payload)
-	}
-
-	// deleting an absent key emits nothing
+	// deleting an absent key is a no-op (no error, nothing to delete)
 	if err := DeleteFlag(ctx, pool, key); err != nil {
 		t.Fatalf("DeleteFlag absent: %v", err)
 	}
-	total := 0
-	if err := pool.QueryRow(ctx,
-		`SELECT count(*) FROM outbox WHERE topic='flags' AND payload->>'key'=$1 AND payload->>'deleted'='true'`, key,
-	).Scan(&total); err != nil {
-		t.Fatalf("count delete events: %v", err)
-	}
-	if total != 1 {
-		t.Errorf("delete events = %d, want 1 (absent-key delete must be a no-op)", total)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM flags WHERE key=$1`, key).Scan(&n); err != nil {
+		t.Fatalf("count flags after absent delete: %v", err)
 	}
 	if n != 0 {
-		t.Errorf("flags rows = %d, want 0", n)
+		t.Errorf("flags rows = %d, want 0 after absent-key delete", n)
 	}
 }

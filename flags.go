@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// flagEvent is the payload enqueued to the outbox on every flag write.
+// flagEvent is the row model for a flag as stored in the flags table.
 type flagEvent struct {
 	Key            string          `json:"key"`
 	State          string          `json:"state"`
@@ -45,8 +45,10 @@ func TranslateFlag(row flagEvent) flagdFlag {
 	}
 }
 
-// SetFlag upserts a feature flag and enqueues a 'flags' outbox event,
-// both atomically in a single transaction.
+// SetFlag upserts a feature flag and notifies consumers (pg_notify) in a
+// single transaction. The notification is delivered only when the
+// transaction commits, so a rolled-back write never notifies — the flag
+// write and its push stay atomic.
 func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant string, variants, targeting, metadata json.RawMessage) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -68,31 +70,22 @@ func SetFlag(ctx context.Context, pool *pgxpool.Pool, key, state, defaultVariant
 		return err
 	}
 
-	payload, err := json.Marshal(flagEvent{
-		Key:            key,
-		State:          state,
-		DefaultVariant: defaultVariant,
-		Variants:       variants,
-		Targeting:      targeting,
-		Metadata:       metadata,
-	})
+	// The listener re-reads the flags row by key, so the notification only
+	// needs to carry the key — well under the 8 KB NOTIFY payload limit.
+	notifyPayload, err := json.Marshal(map[string]any{"key": key})
 	if err != nil {
 		return err
 	}
-
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO outbox (topic, payload)
-		VALUES ('flags', $1)
-	`, json.RawMessage(payload)); err != nil {
+	if _, err := tx.Exec(ctx, "SELECT pg_notify($1, $2)", notifyChannel, notifyPayload); err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
 }
 
-// DeleteFlag removes a feature flag and enqueues a 'flags' outbox delete
-// event, both atomically in a single transaction. Deleting an absent key is
-// a no-op: nothing is deleted and no event is emitted.
+// DeleteFlag removes a feature flag and notifies consumers (pg_notify) in a
+// single transaction. Deleting an absent key is a no-op: nothing is deleted
+// and no notification is sent.
 func DeleteFlag(ctx context.Context, pool *pgxpool.Pool, key string) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -108,15 +101,11 @@ func DeleteFlag(ctx context.Context, pool *pgxpool.Pool, key string) error {
 		return tx.Commit(ctx)
 	}
 
-	payload, err := json.Marshal(flagEvent{Key: key, Deleted: true})
+	notifyPayload, err := json.Marshal(map[string]any{"key": key, "deleted": true})
 	if err != nil {
 		return err
 	}
-
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO outbox (topic, payload)
-		VALUES ('flags', $1)
-	`, json.RawMessage(payload)); err != nil {
+	if _, err := tx.Exec(ctx, "SELECT pg_notify($1, $2)", notifyChannel, notifyPayload); err != nil {
 		return err
 	}
 

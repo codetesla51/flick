@@ -7,9 +7,9 @@ import (
 
 const hubBufferSize = 256
 
-// Hub fans out flag deltas from the outbox consumer to SyncFlags subscribers.
+// Hub fans out flag deltas from the notify layer to SyncFlags subscribers.
 // Publishing never blocks: a subscriber whose buffer is full has the delta
-// dropped (and logged), so a slow consumer can never stall the WAL stream.
+// dropped (and logged), so a slow consumer can never stall the stream.
 type Hub struct {
 	mu     sync.Mutex
 	nextID int
