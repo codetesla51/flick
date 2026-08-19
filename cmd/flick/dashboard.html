@@ -606,6 +606,9 @@
         <i class="ph ph-magnifying-glass"></i>
         <input id="search" type="search" placeholder="Search flags…" autocomplete="off" aria-label="Search flags" />
       </div>
+      <button id="exportBtn" class="btn" title="Download all flags as JSON (same shape as flick export)"><i class="ph ph-download-simple"></i> Export</button>
+      <button id="importBtn" class="btn" title="Load flags from a JSON file (same shape as flick export)"><i class="ph ph-upload-simple"></i> Import</button>
+      <input id="importFile" type="file" accept=".json,application/json" class="hidden" aria-label="Import flags from JSON file" />
     </div>
 
     <div id="listHeader" class="lhead">
@@ -1541,6 +1544,79 @@ mstream.onmessage = (msg) => {
     charts.forEach((c) => c.update("none"));
   } catch (_) {}
 };
+
+/* ---------- export / import (same JSON shape as flick export/import) ---------- */
+const canonicalFlag = (f) => ({
+  key: f.key,
+  state: f.state,
+  default_variant: f.defaultVariant,
+  variants: obj(f.variants),
+  targeting: obj(f.targeting),
+  metadata: obj(f.metadata),
+});
+
+$("exportBtn").addEventListener("click", async () => {
+  try {
+    const data = await api("/api/flags");
+    const flags = (data.flags || []).map(canonicalFlag);
+    if (!flags.length) { toast("Nothing to export — no flags yet"); return; }
+    const blob = new Blob([JSON.stringify(flags, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "flick-flags-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    toast("Exported " + flags.length + (flags.length === 1 ? " flag" : " flags"));
+  } catch (err) { toast("Export failed: " + err.message, "bad"); }
+});
+
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ""; // allow re-importing the same file
+  if (!file) return;
+  let items;
+  try {
+    items = JSON.parse(await file.text());
+    if (!Array.isArray(items)) throw new Error("expected a JSON array");
+  } catch (err) {
+    toast("Import failed: " + file.name + " — " + err.message, "bad");
+    return;
+  }
+  // Accept both CLI (snake_case) and console (camelCase) field names.
+  const norm = (f) => ({
+    key: f.key,
+    state: f.state || "ENABLED",
+    defaultVariant: f.default_variant || f.defaultVariant || "",
+    variants: obj(f.variants),
+    targeting: obj(f.targeting),
+    metadata: obj(f.metadata),
+  });
+  const btn = $("importBtn");
+  btn.disabled = true; btn.classList.add("opacity-50");
+  let ok = 0;
+  const errors = [];
+  try {
+    for (const raw of items) {
+      if (!raw || typeof raw !== "object" || !raw.key) { errors.push("entry without a key"); continue; }
+      try {
+        await api("/api/flags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(norm(raw)),
+        });
+        ok++;
+      } catch (err) { errors.push(raw.key + ": " + err.message); }
+    }
+  } finally {
+    btn.disabled = false; btn.classList.remove("opacity-50");
+  }
+  if (ok) toast("Imported " + ok + (ok === 1 ? " flag" : " flags"));
+  if (errors.length) toast("Import: " + errors.slice(0, 3).join("; ") + (errors.length > 3 ? " (+" + (errors.length - 3) + " more)" : ""), "bad");
+  if (ok) await refreshFlags();
+});
 
 $("newBtn").addEventListener("click", () => openDrawer(null));
 $("emptyNew").addEventListener("click", () => openDrawer(null));
