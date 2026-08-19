@@ -12,6 +12,18 @@ Your app never talks to flick. It talks to flagd, which evaluates from its own i
 
 ---
 
+## Live demo
+
+No install, no Postgres, no setup — this is the full stack from [Quick start](#quick-start), already running against a real Postgres on a public VM. The storefront reads **nine real flags** through flagd, and flipping one in the console sends it through the entire pipeline — Postgres → outbox → WAL → flagd → back to the page — in under a second:
+
+- **Demo storefront** — https://owner-reliable-closure-interactions.trycloudflare.com
+- **flick console** (manage flags, watch live metrics) — https://attending-crowd-particles-dramatically.trycloudflare.com
+
+> [!WARNING]
+> The demo is served through a Cloudflare **quick tunnel** on a free-tier VM — it is **not permanent**. The URLs are temporary and will change if the tunnel restarts, and the box may be offline at any time. Treat it as a preview: the [Quick start](#quick-start) below runs the same stack on your own machine with stable `localhost` addresses.
+
+---
+
 ## Why flick
 
 - **Flags are data.** They live in Postgres — SQL, joins, audit, backups, the same operational muscle you already have. No new platform, no vendor lock-in.
