@@ -172,6 +172,7 @@
   }
   .gdot.amber { background-color: var(--yellow); box-shadow: 0 0 6px color-mix(in srgb, var(--yellow) 50%, transparent); }
   .gdot.green { background-color: var(--live); box-shadow: 0 0 6px color-mix(in srgb, var(--live) 50%, transparent); }
+  .gdot.danger { background-color: var(--danger); box-shadow: 0 0 6px color-mix(in srgb, var(--danger) 50%, transparent); }
   .gcard canvas { margin-top: 8px; height: 170px !important; }
 
   /* ---- flags toolbar + ledger ---- */
@@ -568,7 +569,7 @@
         <canvas id="chChanges" aria-label="Changes processed over time"></canvas>
       </div>
       <div class="gcard">
-        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>Failed</span><span class="glive">60s</span></div>
+        <div class="ghead"><span class="gtitle"><span class="gdot danger"></span>Failed</span><span class="glive">60s</span></div>
         <canvas id="chLag" aria-label="Failed events over time"></canvas>
       </div>
     </div>
@@ -1423,6 +1424,7 @@ function chartPalette() {
     indigo: d ? "#6E8BFF" : "#2A4BE0",
     amber: d ? "#E8A34D" : "#C97B00",
     green: d ? "#2FBF7B" : "#0FA968",
+    danger: d ? "#F06A6A" : "#D54444",
   };
 }
 function hexA(hex, a) {
@@ -1432,7 +1434,10 @@ function hexA(hex, a) {
 
 function makeChart(canvasId, series) {
   const p = chartPalette();
-  const color = series === "delivered" ? p.indigo : series === "changes" ? p.amber : p.green;
+  // Explicit per-series color map (no fallback to green — that's how the
+  // Failed chart ended up green after the outbox-era "Pending" rename).
+  const seriesColor = { delivered: p.indigo, changes: p.amber, failed: p.danger };
+  const color = seriesColor[series] || p.danger;
   Chart.defaults.font.family = '"Geist Mono", ui-monospace, monospace';
   Chart.defaults.color = p.muted;
   return new Chart(document.getElementById(canvasId), {
