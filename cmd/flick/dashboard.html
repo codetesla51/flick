@@ -505,7 +505,7 @@
         <div class="metric-value" id="mDelivered">–</div>
       </div>
       <div class="metric">
-        <div class="metric-label"><span>WAL lag</span><i class="ph ph-gauge"></i></div>
+        <div class="metric-label"><span>Pending</span><i class="ph ph-gauge"></i></div>
         <div class="metric-value" id="mLag">–</div>
       </div>
       <div class="metric">
@@ -516,7 +516,7 @@
     <div class="mini-strip" aria-label="Outbox and replication detail">
       <span class="mini"><span>Subscribers</span><b id="mSubs">–</b></span>
       <span class="mini"><span>Dropped</span><b id="mDrop">–</b></span>
-      <span class="mini"><span>Inflight</span><b id="mInf">–</b></span>
+      <span class="mini"><span>Replayed</span><b id="mInf">–</b></span>
       <span class="mini"><span>Failed</span><b id="mFail">–</b></span>
     </div>
   </section>
@@ -537,8 +537,8 @@
         <canvas id="chChanges" aria-label="Changes processed over time"></canvas>
       </div>
       <div class="gcard">
-        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>WAL lag</span><span class="glive">60s</span></div>
-        <canvas id="chLag" aria-label="WAL lag over time"></canvas>
+        <div class="ghead"><span class="gtitle"><span class="gdot green"></span>Pending</span><span class="glive">60s</span></div>
+        <canvas id="chLag" aria-label="Pending outbox events over time"></canvas>
       </div>
     </div>
   </section>
@@ -1477,16 +1477,16 @@ mstream.onmessage = (msg) => {
     const m = JSON.parse(msg.data);
     $("mDelivered").textContent = fmtNum(m.outbox_delivered);
     $("mChanges").textContent = fmtNum(m.changes_processed);
-    $("mLag").textContent = fmtBytes(m.replication_lag_bytes || 0);
+    $("mLag").textContent = fmtNum(m.outbox_inflight);
     $("mSubs").textContent = fmtNum(m.subscribers);
     $("mDrop").textContent = fmtNum(m.changes_dropped);
-    $("mInf").textContent = fmtNum(m.outbox_inflight);
+    $("mInf").textContent = fmtNum(m.replayed);
     $("mFail").textContent = fmtNum(m.outbox_failed);
 
     hist.labels.push(new Date().toLocaleTimeString([], { hour12: false }));
     hist.delivered.push(Number(m.outbox_delivered));
     hist.changes.push(Number(m.changes_processed));
-    hist.lag.push(Number(m.replication_lag_bytes) || 0);
+    hist.lag.push(Number(m.outbox_inflight) || 0);
     if (hist.labels.length > MAX_PTS) {
       hist.labels.shift(); hist.delivered.shift(); hist.changes.shift(); hist.lag.shift();
     }

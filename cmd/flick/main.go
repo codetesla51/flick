@@ -18,12 +18,13 @@ var rootCmd = &cobra.Command{
 	Long: `flick is a feature-flag service backed by Postgres.
 
 Flags live in the flags table; every change (create, update, delete) is
-written to the outbox table in the same transaction. A logical replication
-consumer (phylax) streams those events to connected flagd instances over
-gRPC (flagd.sync.v1.FlagSyncService) — push, no polling.
+written to the outbox table in the same transaction. A trigger fires a
+Postgres LISTEN/NOTIFY signal; the flick sync server consumes it and pushes
+the flag to connected flagd instances over gRPC
+(flagd.sync.v1.FlagSyncService) — push, no polling.
 
 Commands:
-  flick init     set up the database (migrations + replication probe)
+  flick init     set up the database (migrations + notify probe)
   flick serve    run the flagd sync gRPC server
   flick set      create or update a flag
   flick get      show a single flag

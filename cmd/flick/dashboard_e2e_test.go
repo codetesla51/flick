@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/codetesla51/phylax"
+	"github.com/codetesla51/flick"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -27,9 +27,9 @@ func newTestMux(t *testing.T) http.Handler {
 		cleanupFlag(t, pool, apiKey)
 		pool.Close()
 	})
-	// zero-value Server works, but metrics come from a real provider only at
-	// serve time — for API tests any Server is fine (nil → zero metrics).
-	return newDashboardMux(pool, phylax.NewServer(nil, nil))
+	hub := flick.NewHub()
+	layer := flick.NewNotifyLayer(requireDB(t), hub)
+	return newDashboardMux(pool, layer, hub)
 }
 
 func req(t *testing.T, mux http.Handler, method, path string, body []byte) *httptest.ResponseRecorder {

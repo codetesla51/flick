@@ -6,7 +6,7 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/codetesla51/flick)](https://go.dev)
 [![Release](https://img.shields.io/github/v/release/codetesla51/flick)](https://github.com/codetesla51/flick/releases)
 
-flick stores feature flags in Postgres and streams every change to [flagd](https://flagd.dev) over its native gRPC sync protocol. Change a flag from your terminal or SQL and flagd clients see it within milliseconds — with **transactional guarantees** most flag systems don't have: the flag update and its change event commit atomically, so no change is ever lost or half-applied.
+flick stores feature flags in Postgres and streams every change to [flagd](https://flagd.dev) over its native gRPC sync protocol. Change a flag from your terminal or SQL and flagd clients see it within milliseconds — with **transactional guarantees** most flag systems don't have: the flag update and its change event commit atomically, so a change is never half-applied, and undelivered events replay on restart.
 
 Your app never talks to flick. It talks to flagd, which evaluates from its own in-memory copy — sub-millisecond reads, no per-request database hits. flick is the *source*; flagd is the *evaluator*.
 
@@ -14,7 +14,7 @@ Your app never talks to flick. It talks to flagd, which evaluates from its own i
 
 ## Live demo
 
-No install, no Postgres, no setup — this is the full stack from [Quick start](#quick-start), already running against a real Postgres on a public VM. The storefront reads **nine real flags** through flagd, and flipping one in the console sends it through the entire pipeline — Postgres → outbox → WAL → flagd → back to the page — in under a second:
+No install, no Postgres, no setup — this is the full stack from [Quick start](#quick-start), already running against a real Postgres on a public VM. The storefront reads **nine real flags** through flagd, and flipping one in the console sends it through the entire pipeline — Postgres → outbox → LISTEN/NOTIFY → flagd → back to the page — in under a second:
 
 - **Demo storefront** — https://owner-reliable-closure-interactions.trycloudflare.com
 - **flick console** (manage flags, watch live metrics) — https://attending-crowd-particles-dramatically.trycloudflare.com
@@ -27,9 +27,10 @@ No install, no Postgres, no setup — this is the full stack from [Quick start](
 ## Why flick
 
 - **Flags are data.** They live in Postgres — SQL, joins, audit, backups, the same operational muscle you already have. No new platform, no vendor lock-in.
-- **No polling anywhere.** Changes are pushed end-to-end via a **transactional outbox** + **logical replication (CDC)**. Write a flag and an outbox event in one transaction; a WAL consumer streams the event to connected flagd instances.
+- **No polling anywhere.** Changes are pushed end-to-end via a **transactional outbox** + **Postgres LISTEN/NOTIFY**. Write a flag and an outbox event in one transaction; a trigger fires a NOTIFY, and the flick sync server streams the event to connected flagd instances.
 - **No missed updates.** A subscribe-first streaming design guarantees a new client gets the full snapshot *and* any changes that land while the snapshot is being built — nothing slips through the gap.
-- **Survives restarts.** The replication slot resumes from its saved position and replays undelivered events (at-least-once), so changes made while flick is down still reach flagd when it comes back.
+- **Survives restarts.** On boot, flick replays outbox events that were never delivered (at-least-once across restarts), so changes made while flick was down still reach flagd when it comes back. flagd additionally resyncs a full snapshot whenever a client reconnects.
+- **Zero replication setup.** No `wal_level=logical`, no replication slots, no publications, no special privileges — LISTEN/NOTIFY works on **any** Postgres, including managed ones.
 - **Small and testable.** One modular library (`package flick`) + one CLI entrypoint, with `-race`-clean tests against a real Postgres.
 
 ---
@@ -39,8 +40,8 @@ No install, no Postgres, no setup — this is the full stack from [Quick start](
 ```mermaid
 flowchart LR
     CLI["flick CLI / SetFlag"] -->|"flag + outbox event (1 tx)"| DB[("Postgres<br/>flags + outbox")]
-    DB -->|"logical replication (WAL)"| Phylax["phylax (CDC)"]
-    Phylax -->|"delivers outbox rows"| Hub{{"Hub<br/>pub/sub"}}
+    DB -->|"trigger fires pg_notify"| Notify["notify stream<br/>LISTEN/NOTIFY"]
+    Notify -->|"reads outbox row, delivers"| Hub{{"Hub<br/>pub/sub"}}
     Hub -->|"broadcasts deltas"| Sync["SyncService<br/>gRPC :8015<br/>flagd.sync.v1"]
     Sync <-->|"snapshot + live stream"| Flagd["flagd"]
     Flagd -->|"evaluates flags"| Users["Your app / users"]
@@ -53,8 +54,9 @@ flowchart LR
 ### The write path (per flag change)
 
 1. `SetFlag` (or `flick set`) upserts the `flags` row and appends an outbox event — **one transaction, atomic commit**.
-2. phylax picks the event up off the WAL via logical replication, acks it (`delivered_at`), and publishes it to the Hub.
-3. Every connected `SyncFlags` stream merges the delta into its in-memory state and resends the full config to flagd.
+2. The `outbox_flags_notify` trigger fires `pg_notify('flick_flags', id)` when that transaction commits.
+3. The notify layer (`LISTEN flick_flags`) re-reads the outbox row by id — sidestepping the 8 KB NOTIFY payload limit — marks it delivered, and publishes the flag delta to the Hub.
+4. Every connected `SyncFlags` stream merges the delta into its in-memory state and resends the full config to flagd.
 
 ### The read path (per evaluation)
 
@@ -77,7 +79,7 @@ sequenceDiagram
     H--)S: 5. live deltas forwarded instantly
 ```
 
-Subscribe **before** the snapshot work: nothing between "started listening" and "snapshot sent" is lost. The Hub uses buffered, drop-on-full channels — a slow subscriber can never stall the WAL consumer; a dropped delta self-heals on reconnect with a fresh snapshot.
+Subscribe **before** the snapshot work: nothing between "started listening" and "snapshot sent" is lost. The Hub uses buffered, drop-on-full channels — a slow subscriber can never stall the stream consumer; a dropped delta self-heals on reconnect with a fresh snapshot.
 
 ## Install
 
@@ -93,27 +95,26 @@ go install github.com/codetesla51/flick/cmd/flick@latest
 ## Quick start
 
 > [!TIP]
-> Any Postgres with `wal_level = logical` works. The examples below use a docker container; `FLICK_DSN` or `--dsn` points flick at whatever Postgres you have.
+> **Any Postgres works** — no `wal_level` changes, no replication privileges. The examples below use a docker container; `FLICK_DSN` or `--dsn` points flick at whatever Postgres you have.
 
-### 1. Postgres with logical replication
+### 1. Postgres
 
 ```sh
 docker run -d --name flick-pg \
   -e POSTGRES_USER=flick -e POSTGRES_PASSWORD=flick -e POSTGRES_DB=flick \
   -p 5432:5432 postgres:16
-
-docker exec flick-pg psql -U flick -d flick -c "ALTER SYSTEM SET wal_level = 'logical'"
-docker restart flick-pg
 ```
+
+That's it — no `ALTER SYSTEM SET wal_level`, no restart, no slot or publication setup.
 
 ### 2. Set up and run flick
 
 ```sh
-flick init      # migrations + replication probe (proves streaming works)
+flick init      # migrations + notify probe (proves streaming works)
 flick serve     # sync gRPC server on :8015, console on :8016
 ```
 
-`flick init` doesn't just check settings — it runs a live end-to-end probe: it creates the `flick_slot` slot and `flick_pub` publication (the same ones serve uses), writes a probe row to the outbox table, and confirms the stream delivers it. If anything is broken (permissions, wal_level pending restart, another process holding the slot), it says exactly what and how to fix it.
+`flick init` doesn't just check settings — it runs a live probe: it confirms the `outbox_flags_notify` trigger is installed, then verifies LISTEN/NOTIFY end-to-end by listening on a test channel from one connection and sending a notification from a second. If anything is broken, it says exactly what and how to fix it.
 
 DSN resolution: `--dsn` flag → `FLICK_DSN` env → `postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable`.
 
@@ -170,7 +171,7 @@ Three hops, two long-running processes: **flick** (source of truth) → **flagd*
 
 | Command | What it does |
 |---|---|
-| `flick init` | Apply migrations, verify `wal_level=logical`, run a live replication probe (slot + publication + probe event delivered end-to-end) |
+| `flick init` | Apply migrations, verify the outbox notify trigger, run a live LISTEN/NOTIFY probe (round-trip confirmed end-to-end) |
 | `flick serve` | Run the flagd sync gRPC server (`--addr`, env `FLICK_SYNC_ADDR`, default `:8015`) + console (`--metrics-addr`, env `FLICK_METRICS_ADDR`, default `:8016`) |
 | `flick set <key>` | Create/update a flag: `--state` (default `ENABLED`), `--default-variant`, `--variants`, `--targeting`, `--metadata` (JSON) |
 | `flick get <key>` | Show one flag's full detail |
@@ -209,8 +210,8 @@ The console's visual targeting editor ([see below](#console--live-metrics)) cove
 ### What it does
 
 - **Live stream** — every outbox event as it flows through (`#320 flags · checkout-v2 DISABLED`), live over SSE.
-- **Metrics** — headline counters for Flags, Delivered, WAL lag, and Changes processed, plus subscribers / dropped / inflight / failed — fed by `/metrics/stream` (in-memory, no DB access).
-- **Graphs** — 60-second rolling history of outbox delivered, changes processed, and WAL lag.
+- **Metrics** — headline counters for Flags, Delivered, Pending, and Changes processed, plus subscribers / dropped / replayed / failed — fed by `/metrics/stream`.
+- **Graphs** — 60-second rolling history of outbox delivered, changes processed, and pending events.
 - **Flags ledger** — list, filter (enabled / disabled / targeted), search, and paginate (6 per page); edit, delete, toggle state, and switch a flag's default variant inline. Any change from any client — CLI, API, another browser — updates the list live via SSE.
 - **Flag editor** — opens on **New flag** or a row's edit action:
   - **General** — key and state.
@@ -229,8 +230,8 @@ The console's visual targeting editor ([see below](#console--live-metrics)) cove
 | `GET /api/flags` | list all flags |
 | `POST /api/flags` | create/update a flag (full flag object; the console always sends the complete flag) |
 | `DELETE /api/flags/{key}` | delete a flag |
-| `/metrics/stream` | SSE: in-memory metrics snapshot every second (`changes_processed`, `changes_dropped`, `subscribers`, `replication_lag_bytes`, `outbox_delivered`, `outbox_inflight`, `outbox_failed`) — no DB access |
-| `/events` | SSE: every decoded WAL change, live |
+| `/metrics/stream` | SSE: counters every second (`changes_processed`, `changes_dropped`, `subscribers`, `outbox_delivered`, `outbox_inflight` = pending outbox rows, `outbox_failed`, `replayed`) |
+| `/events` | SSE: every outbox event, live |
 
 ```sh
 open http://localhost:8016          # the console
@@ -331,8 +332,9 @@ The evaluation context is how targeting works: a `country=NG` user gets `checkou
 - **One contract:** every flag change goes through the outbox pair (`SetFlag` / `DeleteFlag` / `flick set`). Bare `UPDATE flags` SQL is visible only after a client reconnects.
 
 > **Do NOT `UPDATE flags` directly.** If you write to the `flags` table without writing a matching row to the `outbox` table in the same transaction, flagd never sees the change. The outbox is how changes propagate — no outbox event, no sync. Always use `flick set`, the console, or the `SetFlag` / `DeleteFlag` Go functions.
-- **At-least-once:** the replication slot replays undelivered events across restarts — consumers must be idempotent.
-- **Ordered per topic:** outbox events within a topic are delivered strictly in order, so a rapid on/off toggle always converges on the *final* value, never a stale intermediate.
+- **Atomic write + event:** the flag row and its outbox event commit in one transaction, so a change is never half-applied.
+- **At-least-once across restarts:** on boot, flick replays outbox events that were never delivered and marks them delivered, so changes made while flick was down still reach flagd. Live delivery is at-most-once — a NOTIFY sent while flick is disconnected is lost — but flagd resyncs a full snapshot whenever a client (re)connects, which bounds staleness regardless. (A row can be delivered twice in the tiny startup overlap; flagd applies deltas idempotently.)
+- **Ordered:** a single consumer reads outbox rows in id order, so a rapid on/off toggle always converges on the *final* value, never a stale intermediate.
 - **Self-healing:** drop-on-full deltas resolve on reconnect; hard server crashes trigger flagd's own retry + resync.
 
 ## Scope
@@ -347,18 +349,18 @@ The evaluation context is how targeting works: a `country=NG` user gets `checkou
 flick
 ├── cmd/flick/                the CLI (init, serve, set, get, list, delete, export, import, version)
 │   ├── main.go               command wiring, version, DSN resolution
-│   ├── init.go               migrations + wal_level check → replication probe
-│   ├── probe.go              end-to-end probe: slot, publication, probe event
-│   ├── serve.go              sync gRPC server + console + outbox consumer
+│   ├── init.go               migrations + trigger check → LISTEN/NOTIFY probe
+│   ├── notify_probe.go       live probe: LISTEN from one conn, NOTIFY from another
+│   ├── serve.go              sync gRPC server + console + notify stream
 │   ├── flags_cmd.go          set / get / list / delete / export / import
 │   ├── dashboard.go          console: embedded HTML+CSS+JS, /api/flags, /events, /metrics/stream
 │   └── *_test.go             unit tests; *_e2e_test.go behind `-tags e2e`
 ├── flags.go                  SetFlag / DeleteFlag / TranslateFlag / ApplyDelta / snapshot builders
-├── outbox.go                 phylax wiring; delivery handler → Hub
+├── notify.go                 LISTEN/NOTIFY stream layer: replay + live delivery → Hub
 ├── hub.go                    pub/sub: Subscribe / Unsubscribe / Publish (drop-on-full)
 ├── sync.go                   SyncService: FetchAllFlags + SyncFlags (subscribe-first)
 ├── migrate.go                embedded goose migrations
-├── db/goose_migrations/      flags + outbox DDL
+├── db/goose_migrations/      flags + outbox DDL + outbox_flags_notify trigger
 └── gen/flagd/sync/v1/        generated flagd.sync.v1 Go bindings
 ```
 
@@ -372,6 +374,39 @@ FLICK_DSN=<postgres-dsn> go test -tags e2e ./...   # e2e — needs Postgres
 Tests are split into two buckets:
 
 - **Unit** (`go test ./...`) — hub, translation, snapshot, delta, and CLI-wiring tests. Pure in-memory; runs anywhere with no database.
-- **E2E** (`go test -tags e2e ./...`) — real Postgres round-trips: `SetFlag`/`DeleteFlag` transactions, the CLI (set/get/list/delete), and the console HTTP API. The e2e build tag activates a `TestMain` that self-applies the embedded migrations against the database from `FLICK_DSN`.
+- **E2E** (`go test -tags e2e ./...`) — real Postgres round-trips: `SetFlag`/`DeleteFlag` transactions, the CLI (set/get/list/delete), the console HTTP API, and the notify layer (live LISTEN/NOTIFY delivery, delete events, startup replay, metrics). The e2e build tag activates a `TestMain` that self-applies the embedded migrations against the database from `FLICK_DSN`; the notify tests run against their own scratch database so the live consumer never hears other tests' writes.
 
 E2E tests take their database entirely from the `FLICK_DSN` env var — there is no hardcoded fallback. If `FLICK_DSN` is unset (or the database is unreachable), e2e tests skip cleanly instead of failing, so `-tags e2e` is safe to run anywhere.
+
+---
+
+## Design history: how flick used logical replication (CDC)
+
+Until v0.3, flick streamed outbox events with **logical replication** instead of LISTEN/NOTIFY. This section documents that design for readers of older versions or older blog posts.
+
+### The CDC architecture (v0.1–v0.2)
+
+```mermaid
+flowchart LR
+    CLI["flick CLI / SetFlag"] -->|"flag + outbox event (1 tx)"| DB[("Postgres<br/>flags + outbox")]
+    DB -->|"logical replication (WAL)"| Phylax["phylax (CDC)"]
+    Phylax -->|"delivers outbox rows"| Hub{{"Hub<br/>pub/sub"}}
+    Hub -->|"broadcasts deltas"| Sync["SyncService<br/>gRPC :8015"]
+    Sync <-->|"snapshot + live stream"| Flagd["flagd"]
+    style DB fill:#2d4,color:#111
+    style Flagd fill:#49c,color:#fff
+```
+
+- **Transport:** [phylax](https://github.com/codetesla51/phylax), a logical-replication client, consumed `outbox` inserts from the WAL via the `flick_slot` replication slot and `flick_pub` publication, acked each row (`delivered_at`), and published flag deltas to the Hub.
+- **Requirements:** `wal_level = logical`, a replication slot + publication, the `REPLICATION` privilege, and pg_hba rules permitting replication connections — verified by an end-to-end probe (`flick init`) that created the slot/publication and streamed a probe row to prove delivery.
+- **Guarantees:** the slot made delivery **at-least-once even while disconnected** — undelivered events replayed from the slot's saved position after any downtime.
+
+### Why it changed
+
+Feature flags change a handful of times a day, and the CDC setup tax was disproportionate to that workload: every environment needed WAL-level changes, slot and publication management (slots can go stale, conflict across databases, or block `VACUUM`), replication privileges, and a probe elaborate enough to diagnose all of it. LISTEN/NOTIFY is Postgres's built-in mechanism for exactly this job — infrequent change notifications with zero configuration — and works on **any** Postgres, including managed providers that restrict or charge extra for logical replication.
+
+**What was traded away:** live delivery is now at-most-once (a NOTIFY sent while flick is disconnected is lost), and there is no slot to replay from. Both are covered in practice — flick replays undelivered outbox events on startup, and flagd resyncs a full snapshot whenever a client reconnects — but the strict at-least-once-per-event guarantee of the slot era is gone.
+
+**What was gained:** no `wal_level` changes, no slots or publications, no replication privileges, a 10-line probe instead of a 200-line one, one less dependency, and a codebase that works against a stock Postgres out of the box.
+
+For migrations from v0.2: the `flags` and `outbox` tables are unchanged; run `flick init` (now the LISTEN/NOTIFY probe) after upgrading, and drop the old `flick_slot` slot and `flick_pub` publication if you no longer need them.

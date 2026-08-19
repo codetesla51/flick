@@ -30,10 +30,10 @@ var serveCmd = &cobra.Command{
 	Short: "Run the flagd sync gRPC server",
 	Long: `Run the flagd sync gRPC server.
 
-Starts the outbox logical-replication consumer and serves
+Starts the outbox LISTEN/NOTIFY consumer and serves
 flagd.sync.v1.FlagSyncService (FetchAllFlags + SyncFlags), so flagd can use
 this address as a "grpc" sync source. Also serves live metrics and the
-Phylax Console on the metrics address.
+console on the metrics address.
 
 Example:
   flagd start --sources '[{"uri":"localhost:8015","provider":"grpc"}]'`,
@@ -79,17 +79,15 @@ func runServe(dsn, addr, metrics string) error {
 
 	errCh := make(chan error, 1)
 	hub := flick.NewHub()
-	outbox, err := flick.NewOutbox(dsn, hub)
-	if err != nil {
-		return fmt.Errorf("outbox: %w", err)
-	}
+	layer := flick.NewNotifyLayer(dsn, hub)
 	go func() {
-		errCh <- outbox.Start(ctx)
+		if err := layer.Start(ctx); err != nil {
+			errCh <- err
+		}
 	}()
 
 	metrics = resolveAddr(metrics, "FLICK_METRICS_ADDR", ":8016")
-	phylaxSrv := outbox.Server()
-	dashSrv := &http.Server{Addr: metrics, Handler: newDashboardMux(pool, phylaxSrv)}
+	dashSrv := &http.Server{Addr: metrics, Handler: newDashboardMux(pool, layer, hub)}
 	go func() {
 		log.Printf("console on %s (dashboard, /api/flags, /events, /metrics/stream)", metrics)
 		if err := dashSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -114,10 +112,10 @@ func runServe(dsn, addr, metrics string) error {
 	}()
 	defer grpcServer.GracefulStop()
 
-	log.Println("migrations applied; app db pool ready; outbox consumer started")
+	log.Println("migrations applied; app db pool ready; notify stream started")
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("outbox consumer: %w", err)
+		return fmt.Errorf("notify stream: %w", err)
 	case <-ctx.Done():
 		log.Println("shutting down")
 		return nil

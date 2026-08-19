@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/codetesla51/flick"
@@ -11,15 +12,14 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Set up the database (migrations + replication probe)",
+	Short: "Set up the database (migrations + notify probe)",
 	Long: `Set up the database.
 
 Applies the embedded goose migrations (flags + outbox tables), verifies the
-database is ready for logical replication, and runs an end-to-end probe:
-it creates the flick_slot slot and flick_pub publication (the same ones
-flick serve uses), writes a probe row to the outbox table, and confirms the
-stream delivers it — so you know replication actually works before running
-flick serve.`,
+outbox notify trigger is installed, and runs a live LISTEN/NOTIFY probe: it
+listens on a test channel from one connection, sends a notification from a
+second, and confirms delivery — so you know push notifications actually work
+before running flick serve.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dsn := resolveDSN()
@@ -38,22 +38,18 @@ flick serve.`,
 		}
 		fmt.Println("migrations: up to date")
 
-		var walLevel string
-		var pendingRestart bool
+		var hasTrigger bool
 		if err := db.QueryRowContext(cmd.Context(),
-			`SELECT setting, pending_restart FROM pg_settings WHERE name = 'wal_level'`,
-		).Scan(&walLevel, &pendingRestart); err != nil {
-			return fmt.Errorf("check wal_level: %w", err)
+			`SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'outbox_flags_notify')`,
+		).Scan(&hasTrigger); err != nil {
+			return fmt.Errorf("check notify trigger: %w", err)
 		}
-		if walLevel != "logical" {
-			if pendingRestart {
-				return fmt.Errorf("wal_level = %q — 'logical' is configured but Postgres hasn't restarted\n  fix: restart Postgres to apply the pending wal_level change", walLevel)
-			}
-			return fmt.Errorf("wal_level = %q, but logical replication streaming requires 'logical'\n  fix: run ALTER SYSTEM SET wal_level = 'logical' (as superuser), then restart Postgres", walLevel)
+		if !hasTrigger {
+			return errors.New("outbox_flags_notify trigger missing — the migrate step above should have created it; check migration output")
 		}
-		fmt.Println("wal_level: logical")
+		fmt.Println("outbox notify trigger: present")
 
-		if err := runReplicationProbe(cmd.Context(), dsn); err != nil {
+		if err := runNotifyProbe(cmd.Context(), dsn); err != nil {
 			return err
 		}
 

@@ -27,9 +27,21 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("migrations: open db: %v", err)
 	}
+	// Serialize concurrent TestMain migrations: go test runs package binaries
+	// in parallel and both packages migrate the same database.
+	lock, err := db.Conn(context.Background())
+	if err != nil {
+		log.Fatalf("migrations: lock conn: %v", err)
+	}
+	if _, err := lock.ExecContext(context.Background(), "SELECT pg_advisory_lock(20260819)"); err != nil {
+		log.Fatalf("migrations: lock: %v", err)
+	}
 	if err := flick.Migrate(db); err != nil {
+		lock.ExecContext(context.Background(), "SELECT pg_advisory_unlock(20260819)")
 		log.Fatalf("migrations: %v", err)
 	}
+	lock.ExecContext(context.Background(), "SELECT pg_advisory_unlock(20260819)")
+	lock.Close()
 	db.Close()
 	os.Exit(m.Run())
 }

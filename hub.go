@@ -43,6 +43,13 @@ func (h *Hub) Unsubscribe(id int) {
 	}
 }
 
+// SubscriberCount returns the number of active subscribers.
+func (h *Hub) SubscriberCount() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.subs)
+}
+
 // Publish delivers a delta to every subscriber, dropping (and logging) for
 // any subscriber whose buffer is full.
 func (h *Hub) Publish(payload map[string]any) {

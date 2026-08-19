@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/codetesla51/flick"
-	"github.com/codetesla51/phylax"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -42,8 +41,9 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 }
 
 // newDashboardMux serves the flick console: the embedded dashboard at /,
-// the CRUD API under /api/flags, plus phylax's live SSE endpoints.
-func newDashboardMux(pool *pgxpool.Pool, phylaxSrv *phylax.Server) http.Handler {
+// the CRUD API under /api/flags, plus live SSE endpoints fed by the notify
+// layer (events) and a per-second metrics stream (counters + pending).
+func newDashboardMux(pool *pgxpool.Pool, layer *flick.NotifyLayer, hub *flick.Hub) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -87,11 +87,98 @@ func newDashboardMux(pool *pgxpool.Pool, phylaxSrv *phylax.Server) http.Handler 
 		handleDeleteFlag(w, r, pool, key)
 	})
 
-	// Live streams, straight from phylax.
-	mux.HandleFunc("/events", phylaxSrv.NewSSEHandler)
-	mux.HandleFunc("/metrics/stream", phylaxSrv.NewMetricsHandler)
+	// Live streams, fed by the notify layer (events) and live counters
+	// (metrics); the console HTML is unchanged.
+	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+		handleEventsSSE(w, r, layer)
+	})
+	mux.HandleFunc("/metrics/stream", func(w http.ResponseWriter, r *http.Request) {
+		handleMetricsSSE(w, r, pool, layer, hub)
+	})
 
 	return mux
+}
+
+// handleEventsSSE streams outbox insert events in the shape the console
+// expects (phylax's old decode format: Table/Operation/NewRow), fed by the
+// notify layer. New clients get recent history first, then live events.
+func handleEventsSSE(w http.ResponseWriter, r *http.Request, layer *flick.NotifyLayer) {
+	fl, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	fl.Flush()
+
+	id, ch := layer.SubscribeEvents()
+	defer layer.UnsubscribeEvents(id)
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case e, ok := <-ch:
+			if !ok {
+				return
+			}
+			evt := map[string]any{
+				"Table":     "outbox",
+				"Operation": "insert",
+				"NewRow": map[string]any{
+					"id":      e.ID,
+					"payload": e.Payload,
+				},
+			}
+			b, err := json.Marshal(evt)
+			if err != nil {
+				return
+			}
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+				return
+			}
+			fl.Flush()
+		}
+	}
+}
+
+// handleMetricsSSE streams the notify layer's counters plus the pending
+// outbox count every second.
+func handleMetricsSSE(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, layer *flick.NotifyLayer, hub *flick.Hub) {
+	fl, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	fl.Flush()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			m := layer.MetricsSnapshot()
+			m.Subscribers = hub.SubscriberCount()
+			var pending int64
+			if err := pool.QueryRow(r.Context(),
+				`SELECT count(*) FROM outbox WHERE delivered_at IS NULL`).Scan(&pending); err == nil {
+				m.OutboxInflight = pending
+			}
+			b, err := json.Marshal(m)
+			if err != nil {
+				return
+			}
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+				return
+			}
+			fl.Flush()
+		}
+	}
 }
 
 func handleListFlags(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) {

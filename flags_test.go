@@ -122,8 +122,8 @@ func TestBuildSnapshotJSONShape(t *testing.T) {
 	}
 }
 
-// outboxPayload decodes a raw outbox payload the same way phylax does
-// (json.Unmarshal into map[string]any).
+// outboxPayload decodes a raw outbox payload the same way the notify layer
+// does (json.Unmarshal into map[string]any).
 func outboxPayload(t *testing.T, raw string) map[string]any {
 	t.Helper()
 	var p map[string]any
